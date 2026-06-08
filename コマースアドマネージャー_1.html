@@ -1,0 +1,3496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コマースアドマネージャー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.1.0/encoding.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --primary:#1462D4;--primary-light:#e8f0fd;--primary-dark:#0e4aab;
+  --bg:#f0f4f8;--surface:#fff;--border:#dde4ee;
+  --text:#1a2233;--text-sub:#5a6a84;--text-muted:#8a9ab8;
+  --success:#0d9e6b;--warning:#e07b20;--danger:#d63a3a;
+  --radius:12px;--shadow:0 2px 12px rgba(20,98,212,0.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;}
+
+.header{background:var(--primary);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:60px;box-shadow:0 2px 16px rgba(20,98,212,0.3);}
+.header-left{display:flex;align-items:center;gap:12px;}
+.logo-mark{width:32px;height:32px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);font-size:13px;}
+.header-title{color:#fff;font-size:16px;font-weight:700;}
+.header-sub{color:rgba(255,255,255,0.7);font-size:11px;margin-top:1px;}
+.header-info{color:rgba(255,255,255,0.9);font-size:12px;font-weight:500;}
+.main{max-width:1520px;margin:0 auto;padding:24px 32px 64px;}
+
+/* UPLOAD */
+.upload-zone{background:var(--surface);border:2px dashed var(--border);border-radius:var(--radius);padding:48px 32px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:24px;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--primary);background:var(--primary-light);}
+.upload-icon{font-size:40px;margin-bottom:12px;}
+.upload-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.upload-sub{font-size:12px;color:var(--text-muted);}
+.upload-btn-row{margin-top:16px;}
+.upload-btn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.2s;}
+.upload-btn:hover{background:var(--primary-dark);}
+.upload-btn.secondary{background:transparent;color:var(--primary);border:1.5px solid var(--primary);}
+.upload-btn.secondary:hover{background:var(--primary-light);}
+.upload-bar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:20px;box-shadow:var(--shadow);}
+.upload-bar-info{flex:1;font-size:12px;color:var(--text-sub);}
+.upload-bar-info strong{color:var(--text);font-size:13px;}
+
+/* CONTROLS */
+.controls{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+.toggle-group{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.toggle-btn{padding:8px 20px;font-size:13px;font-family:inherit;font-weight:500;border:none;background:transparent;color:var(--text-sub);cursor:pointer;transition:all 0.2s;}
+.toggle-btn.active{background:var(--primary);color:#fff;}
+.month-controls,.date-controls{display:flex;align-items:center;gap:8px;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.month-controls.visible,.date-controls.visible{opacity:1;pointer-events:all;}
+.select-input,.date-input{font-family:inherit;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);outline:none;}
+.select-input:focus,.date-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light);}
+.period-label{margin-left:auto;font-size:12px;background:var(--primary-light);color:var(--primary);padding:6px 14px;border-radius:20px;font-weight:500;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px;}
+.kpi-card{background:var(--surface);border-radius:var(--radius);padding:18px 18px 14px;border-top:3px solid var(--border);box-shadow:var(--shadow);}
+.kpi-card.blue{border-top-color:var(--primary);}
+.kpi-card.blue2{border-top-color:#42a5f5;}
+.kpi-card.green{border-top-color:var(--success);}
+.kpi-card.orange{border-top-color:var(--warning);}
+.kpi-card.teal{border-top-color:#00bcd4;}
+.kpi-label{font-size:10px;color:var(--text-muted);font-weight:600;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px;}
+.kpi-value{font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;color:var(--text);line-height:1;margin-bottom:8px;word-break:break-all;}
+.kpi-value .unit{font-size:11px;font-weight:400;color:var(--text-sub);}
+.kpi-compare{display:flex;flex-direction:column;gap:4px;padding-top:8px;border-top:1px solid #f0f4f8;}
+.compare-row{display:flex;align-items:center;justify-content:space-between;}
+.compare-label{font-size:10px;color:var(--text-muted);}
+.compare-val{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;}
+.compare-val.neutral{color:var(--text-muted);}
+.compare-val.up{color:var(--success);}
+.compare-val.dn{color:var(--danger);}
+.compare-val.inv-up{color:var(--danger);}
+.compare-val.inv-dn{color:var(--success);}
+
+/* CHART */
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:24px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 0;}
+.card-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--primary);border-radius:2px;}
+.card-title-sub{font-size:11px;font-weight:400;color:var(--text-muted);margin-left:4px;}
+.chart-meta-row{display:flex;gap:14px;padding:8px 18px 14px;flex-wrap:wrap;}
+.chart-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-sub);}
+.chart-meta-dot{width:10px;height:10px;border-radius:50%;}
+.chart-body{padding:0 14px 14px;height:280px;position:relative;}
+.metric-toggle{display:flex;gap:4px;}
+.metric-btn{font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text-sub);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.metric-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+/* TREE FILTER BAR */
+.tree-filter-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;
+  background:#f7f9fd;
+  border:1px solid var(--border);
+  border-top:none;
+  border-bottom:none;
+}
+.filter-label{font-size:11px;font-weight:600;color:var(--text-muted);white-space:nowrap;}
+.filter-select{
+  font-family:inherit;font-size:12px;
+  padding:5px 10px;
+  border:1px solid var(--border);border-radius:7px;
+  background:var(--surface);color:var(--text);outline:none;
+  max-width:220px;
+}
+.filter-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
+.filter-text{
+  font-family:inherit;font-size:12px;
+  padding:5px 10px;
+  border:1px solid var(--border);border-radius:7px;
+  background:var(--surface);color:var(--text);outline:none;
+  width:180px;
+}
+.filter-text:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
+.filter-reset{
+  font-family:inherit;font-size:11px;
+  padding:5px 12px;
+  border:1px solid var(--border);border-radius:7px;
+  background:transparent;color:var(--text-sub);cursor:pointer;
+  transition:all 0.15s;margin-left:auto;
+}
+.filter-reset:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary);}
+.filter-date{
+  font-family:inherit;font-size:12px;
+  padding:5px 8px;
+  border:1px solid var(--border);border-radius:7px;
+  background:var(--surface);color:var(--text);outline:none;
+  width:136px;
+}
+.filter-date:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
+.filter-date-sep{font-size:12px;color:var(--text-muted);}
+.filter-divider{width:1px;height:22px;background:var(--border);margin:0 4px;}
+.filter-count{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+
+/* TREE TABLE */
+.tree-section{margin-bottom:24px;}
+
+/* BOTTOM TABS */
+.bottom-tabs-nav{
+  display:flex;gap:0;
+  background:var(--surface);
+  border-radius:var(--radius) var(--radius) 0 0;
+  border:1px solid var(--border);
+  border-bottom:none;
+  overflow:hidden;
+  width:fit-content;
+  margin-bottom:0;
+}
+.bottom-tab-btn{
+  padding:11px 24px;
+  font-size:13px;font-weight:600;font-family:inherit;
+  border:none;background:transparent;
+  color:var(--text-sub);cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all 0.2s;white-space:nowrap;
+}
+.bottom-tab-btn:hover:not(.active){background:#f7f9fc;color:var(--text);}
+.bottom-tab-btn.active{
+  color:var(--primary);
+  border-bottom-color:var(--primary);
+  background:var(--primary-light);
+}
+.bottom-tab-panel{display:none;}
+.bottom-tab-panel.active{display:block;}
+.bottom-tabs-wrap{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:0 var(--radius) var(--radius) var(--radius);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  margin-bottom:24px;
+}
+.tree-header-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;border:1px solid var(--border);border-bottom:none;}
+.tree-header-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.tree-header-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--primary);border-radius:2px;}
+.tree-actions{display:flex;gap:8px;}
+.tree-action-btn{font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text-sub);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.tree-action-btn:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary);}
+.tree-wrap{background:var(--surface);border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);overflow:auto;box-shadow:var(--shadow);max-height:640px;}
+
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:#f4f7fc;padding:10px 12px;text-align:right;font-weight:600;color:var(--text-sub);border-bottom:2px solid var(--border);white-space:nowrap;font-size:11px;position:sticky;top:0;z-index:2;}
+thead th.th-name{text-align:left;min-width:220px;}
+thead th.th-roas{color:var(--warning);}
+tr.tr-total td{background:#eaf0fc;font-weight:700;border-bottom:2px solid #c5d8f8;}
+tr.tr-camp td{background:#f4f7fc;font-weight:700;}
+tr.tr-grp  td{background:#fafbfe;font-weight:500;}
+tr.tr-ad   td{background:#fff;   font-weight:400;}
+tr:not(:last-child) td{border-bottom:1px solid #f0f4f8;}
+tr.tr-total:hover td{background:#deeaf9;}
+tr.tr-camp:hover  td{background:#edf2fc;}
+tr.tr-grp:hover   td{background:#f2f5fd;}
+tr.tr-ad:hover    td{background:#f8faff;}
+td{padding:9px 12px;vertical-align:middle;}
+.td-name{text-align:left;}
+.name-inner{display:flex;align-items:center;gap:2px;}
+.expand-btn{width:22px;height:22px;min-width:22px;border:none;background:transparent;cursor:pointer;color:var(--text-muted);font-size:11px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:background 0.15s,color 0.15s;flex-shrink:0;user-select:none;}
+.expand-btn:hover{background:var(--primary-light);color:var(--primary);}
+.expand-btn[data-expanded="true"]{color:var(--primary);}
+.expand-btn.leaf{opacity:0;pointer-events:none;}
+.name-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px;display:block;}
+.name-text.total{color:var(--primary-dark);font-weight:700;}
+.name-text.camp{color:var(--primary);font-weight:700;}
+.name-text.grp{color:var(--text);}
+.name-text.ad{color:var(--text-sub);font-size:11px;}
+.td-num{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:nowrap;}
+.td-roas{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;white-space:nowrap;color:var(--warning);}
+.roas-none{color:var(--text-muted);font-weight:400;}
+
+
+
+.hidden{display:none!important;}
+
+/* MANUAL MODAL */
+.manual-overlay{position:fixed;inset:0;background:rgba(10,20,50,0.55);z-index:600;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:fadeIn 0.2s ease;}
+.manual-panel{width:min(780px,100%);background:var(--surface);border-radius:16px;box-shadow:0 8px 48px rgba(20,40,100,0.22);overflow:hidden;animation:slideUp 0.25s ease;}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.manual-header{background:linear-gradient(135deg,#1462D4,#0e4aab);padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;}
+.manual-header-title{color:#fff;font-size:16px;font-weight:700;margin-bottom:3px;}
+.manual-header-sub{color:rgba(255,255,255,0.7);font-size:12px;}
+.manual-close{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:18px;width:32px;height:32px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.manual-close:hover{background:rgba(255,255,255,0.25);}
+.manual-body{padding:24px;max-height:75vh;overflow-y:auto;}
+.manual-toc{background:#f7f9fd;border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:20px;}
+.manual-toc-title{font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.05em;}
+.manual-toc a{display:block;font-size:12px;color:var(--primary);text-decoration:none;padding:3px 0;border-bottom:1px solid #eef2fa;}
+.manual-toc a:last-child{border-bottom:none;}
+.manual-toc a:hover{text-decoration:underline;}
+.manual-section{margin-bottom:28px;}
+.manual-section-title{font-size:14px;font-weight:700;color:var(--text);padding-bottom:8px;border-bottom:2px solid var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.manual-section-title .num{width:24px;height:24px;background:var(--primary);color:#fff;border-radius:50%;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.manual-p{font-size:12px;color:var(--text-sub);line-height:1.8;margin-bottom:10px;}
+.manual-code{background:#1a2233;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;font-size:11px;border-radius:8px;padding:12px 16px;margin:10px 0;overflow-x:auto;white-space:pre;line-height:1.6;}
+.manual-code .cm{color:#64748b;}
+.manual-code .ck{color:#93c5fd;}
+.manual-code .cv{color:#86efac;}
+.manual-code .cs{color:#fde68a;}
+.manual-tip{display:flex;gap:10px;background:#e8f0fd;border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:12px;color:var(--text-sub);line-height:1.6;}
+.manual-tip.warn{background:#fff8e6;border-left-color:#f59e0b;}
+.manual-tip.success{background:#e6f7f0;border-left-color:var(--success);}
+.manual-table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0;}
+.manual-table th{background:#f4f7fc;padding:8px 12px;text-align:left;font-weight:600;color:var(--text-sub);border-bottom:1px solid var(--border);}
+.manual-table td{padding:8px 12px;border-bottom:1px solid #f0f4f8;color:var(--text-sub);}
+.manual-table td:first-child{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);}
+.manual-footer{padding:16px 24px;background:#f7f9fd;border-top:1px solid var(--border);display:flex;justify-content:flex-end;}
+.manual-footer-btn{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;}
+
+/* API CONNECT */
+.api-section{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:var(--shadow);}
+.api-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.api-header-left{display:flex;align-items:center;gap:10px;}
+.api-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:0.05em;}
+.api-badge.ready{background:#e6f7f0;color:var(--success);}
+.api-badge.pending{background:#fff8e6;color:#b45309;}
+.api-badge.connected{background:var(--primary-light);color:var(--primary);}
+.api-title{font-size:14px;font-weight:700;color:var(--text);}
+.api-toggle-btn{font-size:12px;padding:5px 14px;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--text-sub);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.api-toggle-btn:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary);}
+.api-body{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.api-field{display:flex;flex-direction:column;gap:5px;}
+.api-field.full{grid-column:1/-1;}
+.api-label{font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.06em;display:flex;align-items:center;gap:4px;}
+.api-label .required{color:var(--danger);font-size:9px;}
+.api-input{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);outline:none;transition:border 0.15s;}
+.api-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
+.api-input::placeholder{color:var(--text-muted);font-size:11px;}
+.api-actions{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap;}
+.api-connect-btn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#1462D4,#0e4aab);color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:13px;font-weight:700;font-family:inherit;cursor:not-allowed;opacity:0.5;transition:all 0.2s;}
+.api-connect-btn.enabled{cursor:pointer;opacity:1;}
+.api-connect-btn.enabled:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(20,98,212,0.3);}
+.api-connect-btn.loading{opacity:0.7;cursor:not-allowed;}
+.api-save-btn{display:inline-flex;align-items:center;gap:6px;background:transparent;color:var(--primary);border:1.5px solid var(--primary);border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.2s;}
+.api-save-btn:hover{background:var(--primary-light);}
+.api-status{font-size:11px;color:var(--text-muted);margin-left:auto;}
+.api-hint{font-size:11px;color:var(--text-muted);margin-top:10px;padding:10px 14px;background:#f7f9fd;border-radius:7px;border-left:3px solid var(--primary);line-height:1.6;}
+.api-hint strong{color:var(--text);}
+.api-divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--text-muted);font-size:11px;}
+.api-divider::before,.api-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.api-step{display:flex;gap:10px;align-items:flex-start;padding:8px 0;}
+.api-step-num{width:22px;height:22px;min-width:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.api-step-text{font-size:12px;color:var(--text-sub);line-height:1.5;}
+.api-step-text strong{color:var(--text);}
+
+/* CAMPAIGN DETAIL PANEL */
+.camp-detail-overlay{
+  position:fixed;inset:0;background:rgba(10,20,50,0.45);z-index:500;
+  display:flex;align-items:flex-start;justify-content:flex-end;
+  animation:fadeIn 0.2s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.camp-detail-panel{
+  width:min(860px,95vw);height:100vh;overflow-y:auto;
+  background:var(--bg);box-shadow:-4px 0 32px rgba(20,40,100,0.18);
+  display:flex;flex-direction:column;
+  animation:slideIn 0.25s ease;
+}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+.camp-detail-header{
+  position:sticky;top:0;z-index:10;
+  background:var(--primary);padding:16px 20px;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+}
+.camp-detail-title{color:#fff;font-size:14px;font-weight:700;line-height:1.4;flex:1;}
+.camp-detail-subtitle{color:rgba(255,255,255,0.7);font-size:11px;margin-top:2px;}
+.camp-detail-close{
+  background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);
+  color:#fff;font-size:16px;width:32px;height:32px;border-radius:6px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:background 0.15s;
+}
+.camp-detail-close:hover{background:rgba(255,255,255,0.3);}
+.camp-detail-body{padding:20px;flex:1;}
+.camp-detail-kpi{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px;
+}
+.camp-kpi-card{background:var(--surface);border-radius:10px;padding:14px 14px 10px;
+  border-top:3px solid var(--border);box-shadow:var(--shadow);}
+.camp-kpi-card.blue{border-top-color:var(--primary);}
+.camp-kpi-card.orange{border-top-color:var(--warning);}
+.camp-kpi-card.green{border-top-color:var(--success);}
+.camp-kpi-card.teal{border-top-color:#00bcd4;}
+.camp-kpi-label{font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;}
+.camp-kpi-val{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--text);line-height:1;}
+.camp-kpi-sub{font-size:10px;color:var(--text-muted);margin-top:3px;}
+.camp-detail-chart-wrap{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:16px;}
+.camp-detail-chart-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.camp-detail-chart-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--primary);border-radius:2px;}
+.camp-metric-toggle{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;}
+.camp-metric-btn{font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text-sub);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.camp-metric-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.camp-chart-body{height:200px;position:relative;}
+.name-text.camp,.name-text.grp-clickable{cursor:pointer;text-decoration:none;transition:color 0.15s;}
+.name-text.camp:hover{color:var(--primary-dark);text-decoration:underline;}
+.name-text.grp-clickable:hover{color:var(--success);text-decoration:underline;}
+.cd-tab-nav{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px;}
+.cd-tab-btn{padding:8px 16px;font-size:12px;font-weight:600;font-family:inherit;border:none;background:transparent;color:var(--text-sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;}
+.cd-tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+.cd-tab-panel{display:none;}
+.cd-tab-panel.active{display:block;}
+.camp-detail-breadcrumb{font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px;}
+.camp-detail-breadcrumb a{color:rgba(255,255,255,0.85);cursor:pointer;text-decoration:underline;}
+
+/* TOP10 ROAS */
+.top10-section{margin-bottom:24px;}
+.top10-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);box-shadow:var(--shadow);}
+.top10-col-title{font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px;}
+.top10-col-title::before{content:'';display:inline-block;width:2px;height:11px;border-radius:2px;}
+.top10-col-title.camp::before{background:var(--primary);}
+.top10-col-title.grp::before{background:var(--success);}
+.top10-col-title.ad::before{background:var(--warning);}
+.top10-item{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:7px;transition:background 0.15s;cursor:default;min-width:0;}
+.top10-item:hover{background:#f4f7fc;}
+.top10-rank{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--text-muted);width:20px;min-width:20px;text-align:center;flex-shrink:0;}
+.top10-rank.gold{color:#f59e0b;}
+.top10-rank.silver{color:#94a3b8;}
+.top10-rank.bronze{color:#b87333;}
+.top10-name{flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.top10-roas{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--warning);flex-shrink:0;white-space:nowrap;}
+.top10-cost{font-size:10px;color:var(--text-muted);flex-shrink:0;white-space:nowrap;}
+.top10-empty{font-size:12px;color:var(--text-muted);padding:12px 8px;text-align:center;}
+
+/* TOP5 bar-chart style */
+.top5-item{
+  padding:8px 10px;border-radius:8px;
+  transition:background 0.15s;cursor:default;
+  margin-bottom:6px;
+}
+.top5-item:last-child{margin-bottom:0;}
+.top5-item:hover{background:#f4f7fc;}
+.top5-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.top5-rank{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;
+  width:22px;min-width:22px;text-align:center;flex-shrink:0;}
+.top5-rank.gold{color:#f59e0b;}
+.top5-rank.silver{color:#94a3b8;}
+.top5-rank.bronze{color:#b87333;}
+.top5-rank.plain{color:var(--text-muted);}
+.top5-name{
+  flex:1;font-size:11px;font-weight:600;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;
+  position:relative;
+}
+.top5-name::after{
+  content:attr(data-tooltip);
+  position:absolute;left:0;bottom:calc(100% + 6px);
+  background:#1a2233;color:#fff;font-size:11px;font-weight:400;line-height:1.5;
+  padding:5px 10px;border-radius:6px;white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity 0.15s;z-index:9999;
+  box-shadow:0 2px 8px rgba(0,0,0,0.25);max-width:360px;white-space:normal;word-break:break-all;
+}
+.top5-name:hover::after{opacity:1;}
+.top5-cost-label{font-size:10px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;}
+
+/* Bar rows */
+.top5-bars{padding-left:30px;display:flex;flex-direction:column;gap:3px;}
+.top5-bar-row{display:flex;align-items:center;gap:6px;height:16px;}
+.top5-bar-track{
+  flex:1;height:12px;border-radius:3px;background:#f0f4f8;
+  position:relative;overflow:visible;
+}
+.top5-bar-fill{
+  height:100%;border-radius:3px;
+  display:flex;align-items:center;justify-content:flex-end;
+  position:relative;min-width:4px;transition:width 0.4s ease;
+}
+.top5-bar-fill.roas{background:linear-gradient(90deg,#f59e0b88,#f59e0b);}
+.top5-bar-fill.cost{background:linear-gradient(90deg,#1462D422,#1462D455);}
+.top5-bar-label{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;
+  white-space:nowrap;flex-shrink:0;
+}
+.top5-bar-label.roas{color:#d97706;}
+.top5-bar-label.cost{color:var(--text-muted);}
+.top5-bar-tag{font-size:9px;color:var(--text-muted);width:28px;flex-shrink:0;text-align:right;}
+#loading{position:fixed;inset:0;background:rgba(240,244,248,0.92);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px;backdrop-filter:blur(2px);}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* ── 予算管理タブ ── */
+.bg-kpi-row{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:18px;}
+@media(max-width:1100px){.bg-kpi-row{grid-template-columns:repeat(4,1fr);}}
+@media(max-width:680px){.bg-kpi-row{grid-template-columns:repeat(2,1fr);}}
+.bg-kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;box-shadow:var(--shadow);}
+.bg-kpi-label{font-size:10px;color:var(--text-muted);font-weight:700;margin-bottom:5px;letter-spacing:0.03em;}
+.bg-kpi-val{font-size:15px;font-weight:700;color:var(--text);font-family:'IBM Plex Mono',monospace;letter-spacing:-0.3px;}
+.bg-ctrl-label{font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;margin-bottom:4px;display:block;}
+.bg-table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:auto;background:var(--surface);box-shadow:var(--shadow);max-height:640px;}
+.bg-table{width:100%;border-collapse:collapse;font-size:12px;}
+.bg-table th{background:#1a2233;color:#fff;font-weight:700;padding:9px 10px;text-align:right;white-space:nowrap;position:sticky;top:0;z-index:4;}
+.bg-table th.bg-day{text-align:center;}
+.bg-table td{padding:6px 10px;text-align:right;border-bottom:1px solid #eef1f6;font-family:'IBM Plex Mono',monospace;color:var(--text);white-space:nowrap;}
+.bg-table td.bg-day{text-align:center;color:var(--text-sub);font-weight:600;}
+.bg-table tbody tr:hover{background:var(--primary-light);}
+/* 見出し（項目名）固定：日付列は横スクロール時も固定、左上角は最前面 */
+.bg-table thead th.bg-day{left:0;z-index:7;}
+.bg-table td.bg-day{position:sticky;left:0;z-index:3;background:var(--surface);box-shadow:1px 0 0 #e6eaf0;}
+.bg-table tbody tr:hover td.bg-day{background:var(--primary-light);}
+.bg-input{width:62px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;outline:none;color:var(--text);}
+.bg-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
+.bg-input.bg-cost{width:90px;}
+.bg-diff-neg{color:var(--danger);}
+.bg-neg{color:var(--danger);font-weight:600;}
+.bg-pos{color:var(--success);font-weight:600;}
+.bg-status{display:inline-block;padding:2px 12px;border-radius:5px;font-size:11px;font-weight:700;}
+.bg-status.ok{background:#d9f0e3;color:#0d7a4f;}
+.bg-status.ng{background:#fbe0e0;color:#c0303a;}
+.bg-btn{background:var(--surface);color:var(--primary);border:1.5px solid var(--primary);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;}
+.bg-btn:hover{background:var(--primary-light);}
+.bg-note{font-size:11px;color:var(--text-muted);line-height:1.8;margin-top:12px;}
+.bg-media-toggle{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;}
+.bg-media-btn{border:none;background:var(--surface);color:var(--text-sub);font-family:inherit;font-size:13px;font-weight:700;padding:9px 22px;cursor:pointer;transition:all .15s;}
+.bg-media-btn+.bg-media-btn{border-left:1px solid var(--border);}
+.bg-media-btn.active{background:var(--primary);color:#fff;}
+.bg-subhead{font-size:12px;font-weight:700;color:var(--text);margin:6px 0 8px;display:flex;align-items:center;gap:8px;}
+.bg-subhead::before{content:"";display:inline-block;width:3px;height:13px;background:var(--primary);border-radius:2px;}
+.bg-table th.bg-l,.bg-table td.bg-l{text-align:left;}
+.bg-table tfoot td{background:#f3f6fb;font-weight:700;color:var(--text);border-top:2px solid var(--primary);position:sticky;bottom:0;}
+.bg-campname{width:240px;text-align:left;font-family:'Noto Sans JP',sans-serif;font-size:12px;border:1px solid var(--border);border-radius:5px;padding:4px 8px;outline:none;color:var(--text);}
+.bg-campname:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
+.bg-del{background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;border-radius:5px;}
+.bg-del:hover{background:#fbe0e0;color:var(--danger);}
+.bg-mx{width:84px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;outline:none;color:var(--text);background:#fffdf5;}
+.bg-mx:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);background:#fff;}
+.bg-table td.bg-daytotal{font-weight:700;color:var(--text);background:#f7f9fc;}
+.bg-empty{font-size:12px;color:var(--text-muted);padding:14px;text-align:center;}
+
+/* ── 予算対比サマリー ── */
+.smy-toolbar{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+.smy-table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:auto;background:var(--surface);box-shadow:var(--shadow);}
+.smy-table{border-collapse:collapse;font-size:13px;min-width:100%;}
+.smy-table th,.smy-table td{padding:11px 16px;white-space:nowrap;border-bottom:1px solid #eef1f6;text-align:right;font-family:'IBM Plex Mono',monospace;}
+.smy-table thead th{background:#d9e9d3;color:#1f3b24;font-weight:700;font-family:'Noto Sans JP',sans-serif;text-align:center;border-bottom:2px solid #b9d4ae;position:sticky;top:0;z-index:2;}
+.smy-table thead th.smy-date{background:#dce8f2;color:#23415c;text-align:left;}
+.smy-table thead th.smy-total,.smy-table td.smy-total{background:#f3f6fb;font-weight:700;}
+.smy-table tbody th{background:var(--surface);color:var(--text);font-weight:600;text-align:left;font-family:'Noto Sans JP',sans-serif;position:sticky;left:0;z-index:1;border-right:1px solid var(--border);}
+.smy-table td{color:var(--text-sub);}
+.smy-table tr.smy-bold th,.smy-table tr.smy-bold td{font-weight:700;color:var(--text);background:#fbfcfe;}
+.smy-table tr.smy-bold td.smy-total{background:#eef3fb;}
+.smy-table tr.smy-sep th,.smy-table tr.smy-sep td{border-bottom:2px solid #b9d4ae;}
+.smy-empty{font-size:13px;color:var(--text-muted);padding:24px;text-align:center;}
+.bg-paste{width:100%;min-height:90px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6;color:var(--text);outline:none;resize:vertical;background:#fffdf5;}
+.bg-paste:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);background:#fff;}
+.bg-table th.bg-grphead{background:#dce8f2;color:#23415c;font-weight:700;border-left:2px solid #cfe0ee;text-align:center;}
+.bg-table th.bg-campcol{background:#e3efe0;color:#2c4a2c;font-weight:700;border-left:2px solid #cfe0ee;text-align:center;}
+</style>
+</head>
+<body>
+
+<div id="loading" class="hidden">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--text-sub)" id="loadingMsg">処理中...</div>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-mark">CS</div>
+    <div>
+      <div class="header-title">コマースアドマネージャー</div>
+      <div class="header-sub" id="headerSub">CSVをアップロードして開始</div>
+    </div>
+  </div>
+  <div class="header-info" id="headerInfo"></div>
+</div>
+
+<div class="main">
+
+  <!-- Upload Zone -->
+  <!-- ══ API連携パネル ══ -->
+  <div class="api-section" id="apiSection">
+    <div class="api-header">
+      <div class="api-header-left">
+        <span style="font-size:20px">🔌</span>
+        <span class="api-title">コマースアドマネージャー API 自動連携</span>
+        <span class="api-badge pending" id="apiBadge">申請待ち</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="api-toggle-btn" style="background:#e8f0fd;border-color:var(--primary);color:var(--primary);font-weight:600;"
+          onclick="document.getElementById('manualOverlay').classList.remove('hidden')">📘 マニュアル</button>
+        <button class="api-toggle-btn" id="apiToggleBtn">設定を開く ▼</button>
+      </div>
+    </div>
+
+    <!-- 設定パネル (初期は折りたたみ) -->
+    <div id="apiSettingsBody" class="hidden">
+
+      <!-- セットアップガイド -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.05em;">📋 セットアップ手順</div>
+        <div class="api-step">
+          <span class="api-step-num">1</span>
+          <span class="api-step-text"><strong>コマースアドマネージャー APIポータルで申請</strong><br>
+            <a href="https://ads-developers.yahoo.co.jp/ja/ads-api/startup-guide/apply-api-use.html" target="_blank" style="color:var(--primary)">https://ads-developers.yahoo.co.jp/ja/ads-api/startup-guide/apply-api-use.html</a> からデベロッパー登録</span>
+        </div>
+        <div class="api-step">
+          <span class="api-step-num">2</span>
+          <span class="api-step-text"><strong>クライアントID・シークレット取得</strong><br>審査通過後、ポータルから発行されます（数日〜1週間）</span>
+        </div>
+        <div class="api-step">
+          <span class="api-step-num">3</span>
+          <span class="api-step-text"><strong>バックエンドサーバーを用意</strong><br>Node.js または Python でプロキシサーバーを構築（OAuth認証に必要）</span>
+        </div>
+        <div class="api-step">
+          <span class="api-step-num">4</span>
+          <span class="api-step-text"><strong>下記に認証情報を入力して接続</strong><br>情報が揃ったタイミングでこのフォームから即接続できます</span>
+        </div>
+      </div>
+
+      <div class="api-divider">認証情報の入力</div>
+
+      <!-- 認証情報フォーム -->
+      <div class="api-body">
+        <div class="api-field">
+          <span class="api-label">クライアントID <span class="required">必須</span></span>
+          <input class="api-input" id="apiClientId" type="text" placeholder="取得後に入力" autocomplete="off">
+        </div>
+        <div class="api-field">
+          <span class="api-label">クライアントシークレット <span class="required">必須</span></span>
+          <input class="api-input" id="apiClientSecret" type="password" placeholder="取得後に入力" autocomplete="off">
+        </div>
+        <div class="api-field">
+          <span class="api-label">広告アカウントID <span class="required">必須</span></span>
+          <input class="api-input" id="apiAccountId" type="text" placeholder="例: 1234567890">
+        </div>
+        <div class="api-field">
+          <span class="api-label">プロキシサーバーURL <span class="required">必須</span></span>
+          <input class="api-input" id="apiProxyUrl" type="text" placeholder="例: https://your-server.com/api">
+        </div>
+        <div class="api-field full">
+          <span class="api-label">アクセストークン <span style="color:var(--text-muted);font-size:9px;font-weight:400">（プロキシ経由で自動取得 or 手動入力）</span></span>
+          <input class="api-input" id="apiAccessToken" type="password" placeholder="OAuth認証後に自動入力されます" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- 取得期間 -->
+      <div style="display:flex;gap:12px;align-items:flex-end;margin-top:12px;">
+        <div class="api-field" style="flex:1">
+          <span class="api-label">取得開始日</span>
+          <input class="api-input" id="apiDateFrom" type="date">
+        </div>
+        <div class="api-field" style="flex:1">
+          <span class="api-label">取得終了日</span>
+          <input class="api-input" id="apiDateTo" type="date">
+        </div>
+        <div class="api-field">
+          <span class="api-label">取得単位</span>
+          <select class="api-input" id="apiReportType" style="font-family:inherit">
+            <option value="DAILY">日別</option>
+            <option value="MONTHLY">月別</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- アクション -->
+      <div class="api-actions">
+        <button class="api-connect-btn" id="apiConnectBtn" onclick="connectYahooApi()" disabled>
+          <span id="apiConnectBtnIcon">🔌</span> データを取得
+        </button>
+        <button class="api-save-btn" onclick="saveApiSettings()">💾 設定を保存</button>
+        <span class="api-status" id="apiStatusMsg">認証情報を入力するとデータ取得が可能になります</span>
+      </div>
+
+      <div class="api-hint">
+        <strong>⚠️ セキュリティについて</strong><br>
+        クライアントシークレットとアクセストークンはブラウザのローカルストレージに保存されます。<br>
+        本番運用時は必ずバックエンドサーバー（Node.js / Python等）経由でAPIを呼び出してください。<br>
+        このUIはAPI接続の受け皿として用意しています。認証情報取得後にすぐ接続できます。
+      </div>
+    </div>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-icon">📊</div>
+    <div class="upload-title">CSV ／ 予算Excel ／ ZIP をアップロード</div>
+    <div class="upload-sub">コマアドのCSV（複数月）、予算シート(Excel)、またはそれらをまとめたZIPに対応。Shift-JIS / UTF-8 自動判定。ドラッグ＆ドロップも可能です。</div>
+    <div class="upload-btn-row">
+      <button class="upload-btn" onclick="document.getElementById('csvInput').click()">📂 ファイルを選択（複数可・ZIP可）</button>
+    </div>
+    <input type="file" id="csvInput" accept=".csv,.xlsx,.xls,.zip" multiple style="display:none">
+  </div>
+
+  <!-- Compact Upload Bar -->
+  <div class="upload-bar hidden" id="uploadBar">
+    <span style="font-size:20px">📊</span>
+    <div class="upload-bar-info">
+      <strong id="uploadFileName">—</strong>
+      <span id="uploadFileInfo" style="margin-left:10px;color:var(--text-muted)"></span>
+    </div>
+    <button class="upload-btn secondary" style="font-size:12px;padding:7px 16px"
+      onclick="document.getElementById('csvInput2').click()">📂 CSV / Excelを追加</button>
+    <button class="upload-btn secondary" style="font-size:12px;padding:7px 16px;margin-left:8px"
+      onclick="document.getElementById('csvInput2').click()">🗜 ZIPで一括読み込み</button>
+    <button class="upload-btn secondary" style="font-size:12px;padding:7px 16px;margin-left:8px"
+      onclick="clearSavedData()">🗑 データをクリア</button>
+    <input type="file" id="csvInput2" accept=".csv,.xlsx,.xls,.zip" multiple style="display:none">
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="btnMonthly" onclick="setView('monthly')">月次集計</button>
+        <button class="toggle-btn" id="btnDaily" onclick="setView('daily')">日別表示</button>
+      </div>
+      <div class="month-controls visible" id="monthControls">
+        <select class="select-input" id="monthSelect"></select>
+      </div>
+      <div class="date-controls" id="dateControls">
+        <input type="date" class="date-input" id="dateFrom">
+        <span style="color:var(--text-muted)">〜</span>
+        <input type="date" class="date-input" id="dateTo">
+      </div>
+      <div class="period-label" id="periodLabel"></div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-label">インプレッション</div>
+        <div class="kpi-value" id="kpiImp">—</div>
+        <div class="kpi-compare">
+          <div class="compare-row"><span class="compare-label">前月比 (MoM)</span><span class="compare-val neutral" id="cmpImpMoM">— %</span></div>
+          <div class="compare-row"><span class="compare-label">前年比 (YoY)</span><span class="compare-val neutral" id="cmpImpYoY">— %</span></div>
+        </div>
+      </div>
+      <div class="kpi-card blue2">
+        <div class="kpi-label">クリック数 / CTR</div>
+        <div class="kpi-value" id="kpiClick">—</div>
+        <div class="kpi-compare">
+          <div class="compare-row"><span class="compare-label">前月比 (MoM)</span><span class="compare-val neutral" id="cmpClickMoM">— %</span></div>
+          <div class="compare-row"><span class="compare-label">前年比 (YoY)</span><span class="compare-val neutral" id="cmpClickYoY">— %</span></div>
+        </div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">コスト / 平均CPC</div>
+        <div class="kpi-value" id="kpiCost">—</div>
+        <div class="kpi-compare">
+          <div class="compare-row"><span class="compare-label">前月比 (MoM)</span><span class="compare-val neutral" id="cmpCostMoM">— %</span></div>
+          <div class="compare-row"><span class="compare-label">前年比 (YoY)</span><span class="compare-val neutral" id="cmpCostYoY">— %</span></div>
+        </div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">コンバージョン数 / CVR</div>
+        <div class="kpi-value" id="kpiCv">—</div>
+        <div class="kpi-compare">
+          <div class="compare-row"><span class="compare-label">前月比 (MoM)</span><span class="compare-val neutral" id="cmpCvMoM">— %</span></div>
+          <div class="compare-row"><span class="compare-label">前年比 (YoY)</span><span class="compare-val neutral" id="cmpCvYoY">— %</span></div>
+        </div>
+      </div>
+      <div class="kpi-card teal">
+        <div class="kpi-label">ROAS</div>
+        <div class="kpi-value" id="kpiCpa" style="font-size:28px;letter-spacing:-0.5px">—</div>
+        <div class="kpi-compare">
+          <div class="compare-row"><span class="compare-label">前月比 (MoM)</span><span class="compare-val neutral" id="cmpCpaMoM">— %</span></div>
+          <div class="compare-row"><span class="compare-label">前年比 (YoY)</span><span class="compare-val neutral" id="cmpCpaYoY">— %</span></div>
+        </div>
+      </div>
+      <div class="kpi-card" style="border-top-color:#ec4899;">
+        <div class="kpi-label">広告経由売上</div>
+        <div class="kpi-value" id="kpiConvVal" style="font-size:20px;">—</div>
+        <div class="kpi-compare">
+          <div class="compare-row"><span class="compare-label">前月比 (MoM)</span><span class="compare-val neutral" id="cmpConvValMoM">— %</span></div>
+          <div class="compare-row"><span class="compare-label">前年比 (YoY)</span><span class="compare-val neutral" id="cmpConvValYoY">— %</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" id="chartTitle">日別推移</span>
+        <div class="metric-toggle">
+          <button class="metric-btn active" data-metric="cost">コスト</button>
+          <button class="metric-btn" data-metric="click">クリック</button>
+          <button class="metric-btn" data-metric="imp">IMP</button>
+          <button class="metric-btn" data-metric="cv">CV</button>
+          <button class="metric-btn" data-metric="convVal">経由売上</button>
+          <button class="metric-btn" data-metric="roas">ROAS</button>
+        </div>
+      </div>
+      <div class="chart-meta-row">
+        <div class="chart-meta" id="chartMetaLeft"><div class="chart-meta-dot" style="background:#1462D4"></div>コスト</div>
+        <div class="chart-meta" id="chartMetaRight"></div>
+      </div>
+      <div class="chart-body"><canvas id="mainChart"></canvas></div>
+    </div>
+
+    <!-- Hidden TOP10 containers for JS (rendered into tabs) -->
+    <div style="display:none">
+      <div id="top10Camp"></div>
+      <div id="top10Grp"></div>
+      <div id="top10Ad"></div>
+      <span id="top10PeriodLabel"></span>
+    </div>
+
+    <!-- Bottom Tabs -->
+    <div class="bottom-tabs-nav">
+      <button class="bottom-tab-btn active" data-tab="tab-tree">📊 キャンペーン階層別実績</button>
+      <button class="bottom-tab-btn" data-tab="tab-roas-top10">🏆 ROAS TOP5</button>
+      <button class="bottom-tab-btn" data-tab="tab-budget">📅 予算管理</button>
+      <button class="bottom-tab-btn" data-tab="tab-summary">📋 予算対比サマリー</button>
+    </div>
+    <div class="bottom-tabs-wrap">
+
+      <!-- Tab: 階層別実績 -->
+      <div class="bottom-tab-panel active" id="tab-tree">
+        <div class="tree-section" style="margin-bottom:0">
+          <div class="tree-header-bar" style="border-radius:0;border:none;border-bottom:1px solid var(--border);">
+            <span class="tree-header-title">キャンペーン ＞ 広告グループ ＞ 広告　階層別実績</span>
+            <div class="tree-actions">
+              <button class="tree-action-btn" id="btnExpandAll">全て展開</button>
+              <button class="tree-action-btn" id="btnCollapseAll">全て折りたたむ</button>
+            </div>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="tree-filter-bar" style="border:none;border-bottom:1px solid var(--border);">
+            <span class="filter-label">🔍 絞り込み</span>
+            <input type="date" class="filter-date" id="filterDateFrom" title="開始日">
+            <span class="filter-date-sep">〜</span>
+            <input type="date" class="filter-date" id="filterDateTo" title="終了日">
+            <div class="filter-divider"></div>
+            <select class="filter-select" id="filterCamp"><option value="">キャンペーン：すべて</option></select>
+            <select class="filter-select" id="filterGrp"><option value="">広告グループ：すべて</option></select>
+            <input type="text" class="filter-text" id="filterAd" placeholder="広告名で検索...">
+            <span class="filter-count" id="filterCount"></span>
+            <button class="filter-reset" id="btnFilterReset">リセット</button>
+          </div>
+
+          <div class="tree-wrap" style="border-radius:0;border:none;box-shadow:none;">
+            <table>
+              <thead>
+                <tr>
+                  <th class="th-name">名称</th>
+                  <th>インプレッション</th><th>クリック</th><th>CTR(%)</th>
+                  <th>コスト</th><th>平均CPC</th><th>CV数</th>
+                  <th>CVR(%)</th><th>CPA</th>
+                  <th style="color:#ec4899">経由売上</th>
+                  <th class="th-roas">ROAS(%)</th>
+                </tr>
+              </thead>
+              <tbody id="treeBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: ROAS TOP10 -->
+      <div class="bottom-tab-panel" id="tab-roas-top10">
+        <div style="padding:16px;">
+          <div class="top10-grid" style="border:none;box-shadow:none;padding:0;border-radius:0;">
+            <div>
+              <div class="top10-col-title camp">📊 キャンペーン別 TOP5</div>
+              <div id="top10Camp2"></div>
+            </div>
+            <div>
+              <div class="top10-col-title grp">📊 広告グループ別 TOP5</div>
+              <div id="top10Grp2"></div>
+            </div>
+            <div>
+              <div class="top10-col-title ad">📊 広告別 TOP5</div>
+              <div id="top10Ad2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: 予算管理 -->
+      <div class="bottom-tab-panel" id="tab-budget">
+        <div style="padding:16px;">
+
+          <!-- 媒体トグル -->
+          <div class="bg-media-toggle" id="bgMediaToggle">
+            <button class="bg-media-btn active" data-bgmedia="comad">コマアド</button>
+            <button class="bg-media-btn" data-bgmedia="yahoo">Yahoo!広告</button>
+          </div>
+
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+            <div>
+              <span class="bg-ctrl-label">年月</span>
+              <select class="select-input" id="bgMonth" style="width:140px"></select>
+            </div>
+            <div>
+              <span class="bg-ctrl-label">インセンティブ（任意・円）</span>
+              <input type="number" class="select-input" id="bgIncentive" style="width:150px" placeholder="任意">
+            </div>
+            <button class="bg-btn" id="bgResetAlloc">予算配分を均等にリセット</button>
+            <button class="bg-btn" id="bgImportCsv">読込データからキャンペーンを取込</button>
+            <button class="bg-btn" id="bgImportXlsxBtn" style="background:var(--primary);color:#fff;border-color:var(--primary)">予算シート(Excel)を読み込む</button>
+            <input type="file" id="bgXlsxInput" accept=".xlsx,.xls" style="display:none">
+          </div>
+
+          <!-- Excel貼り付け -->
+          <div class="bg-subhead">Excelの予算シートを読み込む（ファイル選択 ／ 貼り付け）</div>
+          <div style="margin-bottom:18px;">
+            <textarea id="bgPaste" class="bg-paste" placeholder="「予算シート(Excel)を読み込む」でxlsxを直接読み込めます。&#10;または、Excelの「日別予算」シートをそのまま範囲選択してコピーし、ここに貼り付け（Ctrl+V）→「反映」。月予算と予算配分％を自動取込します（広告費は読込データから自動反映するため不要）。"></textarea>
+            <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button class="bg-btn" id="bgPasteApply">貼り付け内容を反映</button>
+              <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px;"><input type="checkbox" id="bgPasteReplace"> 既存の予算を置き換える（チェックなしは追記・更新）</label>
+              <span id="bgPasteMsg" style="font-size:11px;color:var(--primary);font-weight:600;"></span>
+            </div>
+          </div>
+
+          <div class="bg-kpi-row" id="bgKpiRow"></div>
+
+          <!-- キャンペーン別 予算 -->
+          <div class="bg-subhead">キャンペーン別 月予算（手入力 / Excel貼り付け）</div>
+          <div class="bg-table-wrap" style="margin-bottom:8px;max-height:none;">
+            <table class="bg-table" id="bgCampTable">
+              <thead>
+                <tr><th class="bg-l">キャンペーン名</th><th>月予算（円）</th><th>実績（累計）</th><th>消化率</th><th></th></tr>
+              </thead>
+              <tbody id="bgCampBody"></tbody>
+              <tfoot><tr id="bgCampFoot"></tr></tfoot>
+            </table>
+          </div>
+          <button class="bg-btn" id="bgAddCamp" style="margin-bottom:18px;">＋ キャンペーンを追加</button>
+
+          <!-- 日別×キャンペーン マトリクス -->
+          <div class="bg-subhead">日別予算（予算＝月予算×予算配分％／広告費・累計は読込データから自動）</div>
+          <div class="bg-table-wrap">
+            <table class="bg-table" id="bgDailyTable">
+              <thead id="bgDailyHead"></thead>
+              <tbody id="bgBody"></tbody>
+            </table>
+          </div>
+
+          <div class="bg-note">
+            ・<strong>Excel貼り付け</strong>：「日別予算」シートを範囲選択してコピー→貼り付け→「反映」で、各キャンペーンの<strong>月予算</strong>と日次の<strong>予算配分％</strong>を一括取込します（見出しの構成は自動判定。広告費列は無視）。<br>
+            ・<strong>予算配分</strong>（％）：日ごとの配分比率（月内合計100％想定）。<strong>各キャンペーンの日別予算 ＝ 月予算 × 予算配分％</strong>で算出します。未設定の日は均等配分になります。<br>
+            ・<strong>広告費（実績）</strong>：読み込んだデータから、キャンペーン名が一致する日次の利用金額を自動抽出して表示します（手入力不要）。<strong>累計</strong>はその累積です。<br>
+            ・KPIの<strong>達成率</strong>＝累計広告費÷目標金額、<strong>累計差分</strong>＝累計広告費−累計予算、<strong>進捗状況</strong>は達成率が必要達成率（経過日数÷今月の日数）以上なら「順調」。<strong>着地見込み</strong>＝現状広告費÷抽出最終日×今月の日数。<br>
+            ・コマアド／Yahoo!広告はそれぞれ独立。設定は媒体・年月ごとにブラウザ内へ自動保存されます。
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: 予算対比サマリー -->
+      <div class="bottom-tab-panel" id="tab-summary">
+        <div style="padding:16px;">
+          <div class="smy-toolbar">
+            <div class="bg-media-toggle" id="smyMediaToggle">
+              <button class="bg-media-btn active" data-smymedia="comad">コマアド</button>
+              <button class="bg-media-btn" data-smymedia="yahoo">Yahoo!広告</button>
+            </div>
+            <div>
+              <span class="bg-ctrl-label">年月</span>
+              <select class="select-input" id="smyMonth" style="width:140px"></select>
+            </div>
+            <div>
+              <span class="bg-ctrl-label">集計単位</span>
+              <select class="select-input" id="smyDim" style="width:170px">
+                <option value="camp">キャンペーン別</option>
+                <option value="grp">広告グループ別</option>
+              </select>
+            </div>
+          </div>
+          <div class="smy-table-wrap">
+            <table class="smy-table" id="smyTable">
+              <thead id="smyHead"></thead>
+              <tbody id="smyBody"></tbody>
+            </table>
+          </div>
+          <div class="bg-note">
+            ・<strong>累計予算</strong>：予算管理タブ（選択中の媒体・年月）で設定したキャンペーン別月予算を、抽出最終日まで予算差配％で日割りした累計です（キャンペーン名が一致したものを集計）。<br>
+            ・<strong>累計利用金額／クリック／注文者／売上</strong>：読み込み中のCSV（当月・抽出最終日まで）の実績を集計単位ごとに集計。<br>
+            ・<strong>累計予算進捗</strong>＝利用金額÷予算、<strong>CPC</strong>＝利用金額÷クリック、<strong>累計CVR</strong>＝注文者÷クリック、<strong>累計費用対効果（ROAS）</strong>＝売上÷利用金額。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  <div class="camp-detail-overlay hidden" id="campDetailOverlay">
+    <div class="camp-detail-panel" id="campDetailPanel">
+      <div class="camp-detail-header">
+        <div style="flex:1;min-width:0">
+          <div class="camp-detail-breadcrumb" id="campDetailBreadcrumb"></div>
+          <div class="camp-detail-title" id="campDetailTitle">キャンペーン名</div>
+          <div class="camp-detail-subtitle" id="campDetailSubtitle"></div>
+        </div>
+        <button class="camp-detail-close" id="campDetailClose">✕</button>
+      </div>
+      <div class="camp-detail-body">
+        <!-- KPI Summary -->
+        <div class="camp-detail-kpi">
+          <div class="camp-kpi-card blue"><div class="camp-kpi-label">クリック / CTR</div><div class="camp-kpi-val" id="cdKpiClick">—</div><div class="camp-kpi-sub" id="cdKpiCtr"></div></div>
+          <div class="camp-kpi-card orange"><div class="camp-kpi-label">コスト / CPC</div><div class="camp-kpi-val" id="cdKpiCost">—</div><div class="camp-kpi-sub" id="cdKpiCpc"></div></div>
+          <div class="camp-kpi-card green"><div class="camp-kpi-label">CV数 / CVR</div><div class="camp-kpi-val" id="cdKpiCv">—</div><div class="camp-kpi-sub" id="cdKpiCvr"></div></div>
+          <div class="camp-kpi-card teal"><div class="camp-kpi-label">ROAS</div><div class="camp-kpi-val" id="cdKpiRoas">—</div><div class="camp-kpi-sub" id="cdKpiRoasSub"></div></div>
+          <div class="camp-kpi-card" style="border-top-color:#ec4899"><div class="camp-kpi-label">経由売上</div><div class="camp-kpi-val" id="cdKpiConvVal" style="font-size:16px">—</div><div class="camp-kpi-sub" id="cdKpiConvValSub"></div></div>
+        </div>
+        <!-- Chart Tabs -->
+        <div class="cd-tab-nav">
+          <button class="cd-tab-btn active" data-cdtab="cd-monthly">月次推移</button>
+          <button class="cd-tab-btn" data-cdtab="cd-daily">日別推移</button>
+        </div>
+        <!-- Monthly Chart -->
+        <div class="cd-tab-panel active" id="cd-monthly">
+          <div class="camp-detail-chart-wrap" style="margin-bottom:0">
+            <div class="camp-metric-toggle" id="cdMonthlyToggle">
+              <button class="camp-metric-btn active" data-cdmetric="cost">コスト</button>
+              <button class="camp-metric-btn" data-cdmetric="click">クリック</button>
+              <button class="camp-metric-btn" data-cdmetric="imp">IMP</button>
+              <button class="camp-metric-btn" data-cdmetric="cv">CV</button>
+              <button class="camp-metric-btn" data-cdmetric="roas">ROAS</button>
+              <button class="camp-metric-btn" data-cdmetric="convVal">経由売上</button>
+            </div>
+            <div class="camp-chart-body"><canvas id="cdMonthlyChart"></canvas></div>
+          </div>
+        </div>
+        <!-- Daily Chart -->
+        <div class="cd-tab-panel" id="cd-daily">
+          <div class="camp-detail-chart-wrap" style="margin-bottom:0">
+            <div class="camp-metric-toggle" id="cdDailyToggle">
+              <button class="camp-metric-btn active" data-cddmetric="cost">コスト</button>
+              <button class="camp-metric-btn" data-cddmetric="click">クリック</button>
+              <button class="camp-metric-btn" data-cddmetric="imp">IMP</button>
+              <button class="camp-metric-btn" data-cddmetric="cv">CV</button>
+            </div>
+            <div class="camp-chart-body"><canvas id="cdDailyChart"></canvas></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 週報生成 ══ -->
+  <div style="margin-top:0" id="weeklySection">
+    <div class="tree-header-bar" style="border-radius:var(--radius) var(--radius) 0 0;margin-top:24px;">
+      <span class="tree-header-title">
+        <span style="display:inline-flex;align-items:center;gap:8px;">
+          <span style="display:inline-block;width:3px;height:14px;background:#7c4dff;border-radius:2px"></span>
+          📋 週報生成
+        </span>
+      </span>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:24px;">
+      <!-- Controls -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;">対象月</span>
+          <select class="select-input" id="wrMonth" style="width:140px"></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;">表示単位</span>
+          <select class="select-input" id="wrDim" style="width:160px">
+            <option value="camp">キャンペーン別</option>
+            <option value="grp">広告グループ別</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;">予算進捗（空欄で自動算出）</span>
+          <input type="number" step="0.01" class="select-input" id="wrBudget" style="width:140px" placeholder="自動: 予算管理から">
+        </div>
+        <button onclick="generateWeeklyReport()" style="background:linear-gradient(135deg,#7c4dff,#1462D4);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;align-self:flex-end;">▶ 週報を生成</button>
+        <button onclick="copyWeeklyReport()" id="wrCopyBtn" style="background:transparent;color:#7c4dff;border:1.5px solid #7c4dff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;align-self:flex-end;">📋 コピー</button>
+      </div>
+      <!-- Summary textarea -->
+      <div style="margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;margin-bottom:6px;">総括（手動入力）</div>
+        <textarea id="wrSummary" style="width:100%;min-height:72px;font-family:inherit;font-size:12px;padding:10px;border:1px solid var(--border);border-radius:8px;resize:vertical;outline:none;background:#fafbfe;color:var(--text);" placeholder="全体パフォーマンスの振り返りや考察を入力してください..."></textarea>
+      </div>
+      <!-- Output -->
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;margin-bottom:6px;">プレビュー</div>
+      <textarea id="wrOutput" readonly style="width:100%;min-height:400px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7;padding:14px;border:1px solid var(--border);border-radius:8px;background:#fafbfe;color:var(--text);resize:vertical;outline:none;" placeholder="「週報を生成」を押すとここに表示されます..."></textarea>
+    </div>
+  </div>
+
+  </div><!-- /dashboard -->
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE & DATA
+// ═══════════════════════════════════════════════════
+let allRows = [];
+let availableMonths = [];
+let view = 'monthly';
+let selectedMonth = null;
+let dailyFilter = null;
+let trendMetric = 'cost';
+let mainChartInst = null;
+
+// Tree expand state
+const expandedCamps = new Set();
+const expandedGrps  = new Set(); // key = campName + "\x00" + grpName
+
+// Tree filter state
+let filterCamp = '';
+let filterGrp  = '';
+let filterAd   = '';
+let filterDateFromVal = '';  // YYYY-MM-DD, for tree table
+let filterDateToVal   = '';  // YYYY-MM-DD, for tree table
+
+// ═══════════════════════════════════════════════════
+//  FORMATTING
+// ═══════════════════════════════════════════════════
+const jp   = n => (n==null||isNaN(n)) ? '—' : Math.round(n).toLocaleString('ja-JP');
+const jf   = (n,d=2) => (n==null||isNaN(n)) ? '—' : n.toLocaleString('ja-JP',{minimumFractionDigits:d,maximumFractionDigits:d});
+const yen  = n => (n==null||isNaN(n)||n===0) ? '—' : '¥'+Math.round(n).toLocaleString('ja-JP');
+const safe = (a,b) => b>0 ? a/b : 0;
+const esc  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function toNum(s) {
+  if (s==null) return 0;
+  const c = String(s).replace(/[¥,\s%]/g,'').trim();
+  if (!c || c==='--' || c==='-') return 0;
+  const n = parseFloat(c);
+  return isNaN(n) ? 0 : n;
+}
+
+// ═══════════════════════════════════════════════════
+//  CSV PARSE
+// ═══════════════════════════════════════════════════
+function handleFile(file) { handleFiles(file ? [file] : []); }
+
+function splitCsvLine(line){
+  const out=[]; let cur=''; let q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(q){
+      if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=ch;
+    } else {
+      if(ch==='"') q=true;
+      else if(ch===','){ out.push(cur); cur=''; }
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function parseRowsFromText(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  const headers = splitCsvLine(lines[0]).map(h => h.trim());
+  const FIELD_MAP = {
+    // Yahoo!広告レポート形式
+    '広告名':'ad', 'キャンペーン名':'camp', '広告グループ名':'grp',
+    '日':'date', '月':'month',
+    'インプレッション数':'imp', 'クリック数':'click', 'コスト':'cost',
+    'コンバージョン数':'cv',
+    // コマアド（コマースアド）キャンペーン別レポート形式
+    '日付':'date', 'キャンペーンID':'campId', '表示回数':'imp',
+    '利用金額(配信実績)':'cost', '利用金額（配信実績）':'cost',
+    '利用金額(請求額)':'costBilled', '利用金額（請求額）':'costBilled',
+    '注文数':'cv', '注文個数':'units', '売上金額':'convVal',
+    // 広告経由売上 - 列名のバリエーション対応
+    'コンバージョンの価値':'convVal',
+    'コンバージョンの価値（クリック経由）':'convVal',
+    'コンバージョンの価値(クリック経由)':'convVal',
+    // ROAS直接列 - 列名のバリエーション対応
+    'コンバージョンの価値/コスト':'roasDirect',
+    'コンバージョンの価値/コスト（クリック経由）':'roasDirect',
+    'コンバージョンの価値/コスト(クリック経由)':'roasDirect',
+  };
+
+  const idx = {};
+  headers.forEach((h,i) => { if (FIELD_MAP[h] != null && idx[FIELD_MAP[h]] == null) idx[FIELD_MAP[h]] = i; });
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCsvLine(lines[i]);
+    let dateRaw = (idx.date != null ? cols[idx.date] : '').trim();
+    if (!dateRaw || dateRaw === '--') continue;
+    dateRaw = dateRaw.replace(/\//g, '-');   // 2026/05/01 → 2026-05-01 に正規化
+
+    const monthRaw = (idx.month != null ? cols[idx.month] : '').trim();
+    const monthKey = (monthRaw && monthRaw !== '--') ? monthRaw.replace(/\//g,'-').slice(0,7) : dateRaw.slice(0,7);
+    // コマアドは「配信実績」を利用金額とする（無ければ請求額）
+    let cost = toNum(idx.cost != null ? cols[idx.cost] : 0);
+    if (!cost && idx.costBilled != null) cost = toNum(cols[idx.costBilled]);
+    const convVal = toNum(idx.convVal != null ? cols[idx.convVal] : 0);
+
+    // ★ ROAS: use the column value directly as a percentage (already in % form in Yahoo reports)
+    //    If column absent, fall back to convVal/cost*100 computed at aggregation time.
+    // ★ roasDirect: CSV「コンバージョンの価値/コスト」列の値をそのまま%として使用
+    //   "250.00%" → 250.00  /  "1.50" → 1.50  /  空・"--" → null
+    let roasDirect = null;
+    if (idx.roasDirect != null) {
+      const raw = String(cols[idx.roasDirect] || '').replace(/[¥,%\s]/g, '').trim();
+      if (raw && raw !== '--' && raw !== '-') {
+        const n = parseFloat(raw);
+        if (!isNaN(n) && n > 0) roasDirect = n;
+      }
+    }
+
+    rows.push({
+      date: dateRaw, month: monthKey,
+      camp: (idx.camp != null ? cols[idx.camp]  : '(不明)').trim() || '(不明)',
+      grp:  (idx.grp  != null ? cols[idx.grp]   : '(不明)').trim() || '(不明)',
+      ad:   (idx.ad   != null ? cols[idx.ad]    : '(不明)').trim() || '(不明)',
+      imp:     toNum(idx.imp   != null ? cols[idx.imp]   : 0),
+      click:   toNum(idx.click != null ? cols[idx.click] : 0),
+      cost, cv: toNum(idx.cv != null ? cols[idx.cv] : 0),
+      convVal,
+      roasDirect, // null = 列なし or 値なし; number = 列の値をそのまま%として使用
+    });
+  }
+
+  return rows;
+}
+
+function finalizeLoad(names, opts) {
+  opts = opts || {};
+  availableMonths = [...new Set(allRows.map(r => r.month))].sort();
+
+  // UI setup
+  filterCamp = ''; filterGrp = ''; filterAd = '';
+  filterDateFromVal = ''; filterDateToVal = '';
+  rebuildFilterOptions();
+
+  const allDatesT = [...new Set(allRows.map(r => r.date))].sort();
+  if (allDatesT.length) {
+    document.getElementById('filterDateFrom').min = allDatesT[0];
+    document.getElementById('filterDateFrom').max = allDatesT[allDatesT.length-1];
+    document.getElementById('filterDateTo').min   = allDatesT[0];
+    document.getElementById('filterDateTo').max   = allDatesT[allDatesT.length-1];
+  }
+
+  hideLoading();
+  let src;
+  if (opts.fromStore) src = `保存データ（${availableMonths.length}ヶ月・${allRows.length.toLocaleString('ja-JP')}件）`;
+  else src = names.length > 1 ? `${names.length}ファイル（${availableMonths.length}ヶ月）` : (names[0] || 'CSV');
+  setupDashboardAfterLoad(src);
+}
+
+// ── データ永続化（ブラウザ内に蓄積保存） ──
+const DATA_STORE = 'cam_data_v1';
+function saveData() {
+  try {
+    localStorage.setItem(DATA_STORE, JSON.stringify({ savedAt: new Date().toISOString(), rows: allRows }));
+    return true;
+  } catch (e) {
+    alert('データの保存に失敗しました（ブラウザの保存容量上限の可能性があります）。今回のセッションでは表示できますが、次回起動時には復元されない場合があります。');
+    return false;
+  }
+}
+function loadSavedData() {
+  try {
+    const raw = localStorage.getItem(DATA_STORE);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return (obj && Array.isArray(obj.rows)) ? obj : null;
+  } catch (e) { return null; }
+}
+function restoreSavedData() {
+  const obj = loadSavedData();
+  if (!obj || !obj.rows.length) return false;
+  allRows = obj.rows;
+  finalizeLoad([], { fromStore: true });
+  return true;
+}
+function clearSavedData() {
+  if (!confirm('保存済みの蓄積データをすべて削除して、アップロード画面に戻します。よろしいですか？')) return;
+  try { localStorage.removeItem(DATA_STORE); } catch (e) {}
+  allRows = [];
+  availableMonths = [];
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('uploadBar').classList.add('hidden');
+  document.getElementById('uploadZone').classList.remove('hidden');
+}
+
+function decodeBytes(bytes){
+  try {
+    const enc = Encoding.detect(bytes);
+    const arr = Encoding.convert(bytes, {to:'UNICODE', from:enc});
+    return Encoding.codeToString(arr);
+  } catch(_) { return new TextDecoder('utf-8').decode(bytes); }
+}
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try { resolve(decodeBytes(new Uint8Array(e.target.result))); }
+      catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(reader.error || new Error('読み込みエラー'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// 複数ファイル取込：CSV（実績）＝月単位でマージ蓄積、Excel（予算シート）＝予算へ反映、ZIP＝中身を振り分け
+async function handleFiles(fileList) {
+  const files = Array.from(fileList || []).filter(Boolean);
+  if (!files.length) return;
+  showLoading(files.length > 1 ? `${files.length}件を解析中...` : 'ファイルを解析中...');
+  try {
+    const csvItems = [];   // {name, text}
+    const xlsxBufs = [];   // {name, buf}
+    // 1) ファイルを種別ごとに収集（ZIPは展開して振り分け）
+    for (const f of files) {
+      const lower = f.name.toLowerCase();
+      if (lower.endsWith('.zip')) {
+        if (typeof JSZip === 'undefined') { alert('ZIP展開ライブラリの初期化中です。数秒後に再試行してください。'); continue; }
+        const zip = await JSZip.loadAsync(await f.arrayBuffer());
+        const entries = Object.values(zip.files).filter(e => !e.dir && !/__MACOSX|\/\._/.test(e.name));
+        for (const e of entries) {
+          const en = e.name.toLowerCase();
+          if (en.endsWith('.csv')) csvItems.push({ name:e.name, text: decodeBytes(await e.async('uint8array')) });
+          else if (en.endsWith('.xlsx') || en.endsWith('.xls')) xlsxBufs.push({ name:e.name, buf: await e.async('arraybuffer') });
+        }
+      } else if (lower.endsWith('.csv')) {
+        csvItems.push({ name:f.name, text: await readFileText(f) });
+      } else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+        xlsxBufs.push({ name:f.name, buf: await f.arrayBuffer() });
+      }
+    }
+
+    // 2) CSV → 実績行
+    let parsed = [];
+    const dataNames = [];
+    csvItems.forEach(it => { const rows = parseRowsFromText(it.text); if (rows.length){ parsed = parsed.concat(rows); dataNames.push(it.name); } });
+
+    // 3) Excel → 予算シート反映
+    let budgetProcessed = [];
+    xlsxBufs.forEach(it => { try { budgetProcessed = budgetProcessed.concat(bgImportXlsxBuffer(it.buf) || []); } catch(_){} });
+
+    // 4) 実績をマージ蓄積
+    if (parsed.length) {
+      if (!Array.isArray(allRows)) allRows = [];
+      const newMonths = new Set(parsed.map(r => r.month));
+      allRows = allRows.filter(r => !newMonths.has(r.month)).concat(parsed);
+      allRows.sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+      saveData();
+    }
+
+    const budgetMsg = budgetProcessed.length ? `予算シート反映：${budgetProcessed.map(p=>p.ym).join('・')}` : '';
+
+    if (parsed.length) {
+      finalizeLoad(dataNames);            // ダッシュボード表示＋initBudget(予算再読込)
+      if (budgetMsg) { const m=document.getElementById('bgPasteMsg'); if(m){ m.textContent=budgetMsg; setTimeout(()=>m.textContent='',6000);} }
+    } else if (budgetProcessed.length) {
+      // 実績は無く予算のみ更新
+      if (allRows && allRows.length) { bgPopulateMonths(budgetProcessed[budgetProcessed.length-1].ym); renderBudget(); }
+      hideLoading();
+      alert('予算シートを読み込みました（' + budgetProcessed.map(p=>p.ym).join('・') + '）。実績CSVも読み込むと広告費が反映されます。');
+    } else {
+      hideLoading();
+      alert('読み取れるCSV／Excelが見つかりませんでした。列名（日付・キャンペーン名・利用金額 等）やZIPの中身をご確認ください。');
+    }
+  } catch(err) { hideLoading(); alert('読み込みに失敗しました: ' + err.message); }
+}
+
+// ═══════════════════════════════════════════════════
+//  FILTER OPTIONS (for tree)
+// ═══════════════════════════════════════════════════
+function rebuildFilterOptions() {
+  // Use ALL rows (not time-filtered) for option lists
+  const camps = [...new Set(allRows.map(r => r.camp))].sort();
+  const grps  = [...new Set(allRows.map(r => r.grp))].sort();
+
+  const sel1 = document.getElementById('filterCamp');
+  sel1.innerHTML = '<option value="">キャンペーン：すべて</option>' +
+    camps.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  sel1.value = filterCamp;
+
+  const sel2 = document.getElementById('filterGrp');
+  sel2.innerHTML = '<option value="">広告グループ：すべて</option>' +
+    grps.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+  sel2.value = filterGrp;
+
+  document.getElementById('filterAd').value = filterAd;
+}
+
+// ═══════════════════════════════════════════════════
+//  ROW FILTERING
+// ═══════════════════════════════════════════════════
+function getRows() {
+  // Time filter
+  if (view === 'monthly' && selectedMonth)
+    return allRows.filter(r => r.month === selectedMonth);
+  if (view === 'daily' && dailyFilter)
+    return allRows.filter(r => r.date >= dailyFilter.from && r.date <= dailyFilter.to);
+  return allRows;
+}
+
+// Tree rows: time filter + dimension filter
+function getTreeRows() {
+  // ★ 完全独立: グローバル期間フィルターを無視し、allRows から直接フィルタリング
+  let rows = allRows;
+  if (filterDateFromVal) rows = rows.filter(r => r.date >= filterDateFromVal);
+  if (filterDateToVal)   rows = rows.filter(r => r.date <= filterDateToVal);
+  if (filterCamp) rows = rows.filter(r => r.camp === filterCamp);
+  if (filterGrp)  rows = rows.filter(r => r.grp  === filterGrp);
+  if (filterAd)   rows = rows.filter(r => r.ad.includes(filterAd));
+  return rows;
+}
+
+function getRowsForMonth(ym) { return allRows.filter(r => r.month === ym); }
+function prevMonthKey(ym) {
+  const [y,m] = ym.split('-').map(Number);
+  return m===1 ? `${y-1}-12` : `${y}-${String(m-1).padStart(2,'0')}`;
+}
+function prevYearKey(ym) {
+  const [y,m] = ym.split('-');
+  return `${Number(y)-1}-${m}`;
+}
+
+// ═══════════════════════════════════════════════════
+//  AGGREGATION
+// ═══════════════════════════════════════════════════
+function agg(rows) {
+  let imp=0, click=0, cost=0, cv=0, convVal=0;
+  let rdNum=0, rdDen=0; // roasDirect加重合計（convVal列がない場合のフォールバック）
+  for (const r of rows) {
+    imp+=r.imp; click+=r.click; cost+=r.cost; cv+=r.cv; convVal+=r.convVal;
+    if (r.roasDirect != null && r.roasDirect > 0 && r.cost > 0) {
+      rdNum += r.roasDirect * r.cost;
+      rdDen += r.cost;
+    }
+  }
+  // ROAS優先順位:
+  //   1. convVal列あり → convVal/cost*100
+  //   2. roasDirect列あり → cost加重平均（CSV値をそのまま使用）
+  const roas = (cost > 0 && convVal > 0)
+    ? (convVal / cost) * 100
+    : (rdDen > 0 ? rdNum / rdDen : null);
+  return { imp, click, cost, cv, convVal,
+    ctr: safe(click,imp)*100, cpc: safe(cost,click),
+    cvr: safe(cv,click)*100,  cpa: safe(cost,cv), roas,
+  };
+}
+
+function aggByDate(rows) {
+  const m = new Map();
+  for (const r of rows) {
+    if (!m.has(r.date)) m.set(r.date,{date:r.date,imp:0,click:0,cost:0,cv:0,convVal:0,rdNum:0,rdDen:0});
+    const x=m.get(r.date);
+    x.imp+=r.imp; x.click+=r.click; x.cost+=r.cost; x.cv+=r.cv; x.convVal+=r.convVal;
+    if(r.roasDirect!=null&&r.roasDirect>0&&r.cost>0){x.rdNum+=r.roasDirect*r.cost;x.rdDen+=r.cost;}
+  }
+  return Array.from(m.values()).sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+function aggByMonth(rows) {
+  const m = new Map();
+  for (const r of rows) {
+    if (!m.has(r.month)) m.set(r.month,{month:r.month,imp:0,click:0,cost:0,cv:0,convVal:0,rdNum:0,rdDen:0});
+    const x=m.get(r.month);
+    x.imp+=r.imp; x.click+=r.click; x.cost+=r.cost; x.cv+=r.cv; x.convVal+=r.convVal;
+    if(r.roasDirect!=null&&r.roasDirect>0&&r.cost>0){x.rdNum+=r.roasDirect*r.cost;x.rdDen+=r.cost;}
+  }
+  return Array.from(m.values()).sort((a,b)=>a.month.localeCompare(b.month));
+}
+
+// ═══════════════════════════════════════════════════
+//  KPI
+// ═══════════════════════════════════════════════════
+function cmpSet(id, cur, prev, inv=false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!prev || isNaN(prev)) { el.textContent='— %'; el.className='compare-val neutral'; return; }
+  const r = ((cur-prev)/Math.abs(prev))*100;
+  el.textContent = (r>=0?'+':'') + jf(r,1) + '%';
+  if (Math.abs(r)<0.05) el.className='compare-val neutral';
+  else if (inv) el.className='compare-val '+(r>0?'inv-up':'inv-dn');
+  else          el.className='compare-val '+(r>0?'up':'dn');
+}
+
+function renderKPI(rows) {
+  const a = agg(rows);
+  document.getElementById('kpiImp').textContent = a.imp.toLocaleString('ja-JP');
+  document.getElementById('kpiClick').innerHTML =
+    a.click.toLocaleString('ja-JP')+'<span class="unit"> CTR:'+jf(a.ctr)+'%</span>';
+  document.getElementById('kpiCost').innerHTML =
+    (a.cost>0?'¥'+Math.round(a.cost).toLocaleString('ja-JP'):'—')+
+    '<span class="unit"> CPC:'+yen(a.cpc)+'</span>';
+  document.getElementById('kpiCv').innerHTML =
+    jp(a.cv)+'<span class="unit"> CVR:'+jf(a.cvr)+'%</span>';
+  document.getElementById('kpiCpa').innerHTML =
+    (a.roas!=null ? jf(a.roas,0)+'<span class="unit">%</span>' : '—');
+  document.getElementById('kpiConvVal').innerHTML =
+    a.convVal>0 ? '¥'+Math.round(a.convVal).toLocaleString('ja-JP') : '—';
+
+  if (view==='monthly' && selectedMonth) {
+    // ── 月次: 選択月 vs 前月 / 前年同月 ──
+    const momKey=prevMonthKey(selectedMonth), yoyKey=prevYearKey(selectedMonth);
+    const mom=availableMonths.includes(momKey)?agg(getRowsForMonth(momKey)):null;
+    const yoy=availableMonths.includes(yoyKey)?agg(getRowsForMonth(yoyKey)):null;
+    cmpSet('cmpImpMoM',   a.imp,   mom?.imp);   cmpSet('cmpImpYoY',   a.imp,   yoy?.imp);
+    cmpSet('cmpClickMoM', a.click, mom?.click); cmpSet('cmpClickYoY', a.click, yoy?.click);
+    cmpSet('cmpCostMoM',  a.cost,  mom?.cost);  cmpSet('cmpCostYoY',  a.cost,  yoy?.cost);
+    cmpSet('cmpCvMoM',    a.cv,    mom?.cv);    cmpSet('cmpCvYoY',    a.cv,    yoy?.cv);
+    cmpSet('cmpCpaMoM',   a.roas,  mom?.roas);  cmpSet('cmpCpaYoY',   a.roas,  yoy?.roas);
+    cmpSet('cmpConvValMoM', a.convVal, mom?.convVal); cmpSet('cmpConvValYoY', a.convVal, yoy?.convVal);
+
+  } else if (view==='daily' && dailyFilter && dailyFilter.from && dailyFilter.to) {
+    // ── 日別: 選択期間と同じ日数をずらして比較 ──
+    const from = new Date(dailyFilter.from);
+    const to   = new Date(dailyFilter.to);
+    const days = Math.round((to - from) / 86400000) + 1; // 選択期間の日数
+
+    // 前月比: 同じ日数分だけ遡った期間
+    const momTo   = new Date(from); momTo.setDate(momTo.getDate() - 1);
+    const momFrom = new Date(momTo); momFrom.setDate(momFrom.getDate() - (days - 1));
+    const momFromStr = momFrom.toISOString().slice(0,10);
+    const momToStr   = momTo.toISOString().slice(0,10);
+
+    // 前年比: 選択期間の1年前（同じ from〜to、年だけ -1）
+    const yoyFrom = new Date(from); yoyFrom.setFullYear(yoyFrom.getFullYear() - 1);
+    const yoyTo   = new Date(to);   yoyTo.setFullYear(yoyTo.getFullYear() - 1);
+    const yoyFromStr = yoyFrom.toISOString().slice(0,10);
+    const yoyToStr   = yoyTo.toISOString().slice(0,10);
+
+    const momRows = allRows.filter(r => r.date >= momFromStr && r.date <= momToStr);
+    const yoyRows = allRows.filter(r => r.date >= yoyFromStr && r.date <= yoyToStr);
+    const mom = momRows.length > 0 ? agg(momRows) : null;
+    const yoy = yoyRows.length > 0 ? agg(yoyRows) : null;
+
+    cmpSet('cmpImpMoM',   a.imp,   mom?.imp);   cmpSet('cmpImpYoY',   a.imp,   yoy?.imp);
+    cmpSet('cmpClickMoM', a.click, mom?.click); cmpSet('cmpClickYoY', a.click, yoy?.click);
+    cmpSet('cmpCostMoM',  a.cost,  mom?.cost);  cmpSet('cmpCostYoY',  a.cost,  yoy?.cost);
+    cmpSet('cmpCvMoM',    a.cv,    mom?.cv);    cmpSet('cmpCvYoY',    a.cv,    yoy?.cv);
+    cmpSet('cmpCpaMoM',   a.roas,  mom?.roas);  cmpSet('cmpCpaYoY',   a.roas,  yoy?.roas);
+    cmpSet('cmpConvValMoM', a.convVal, mom?.convVal); cmpSet('cmpConvValYoY', a.convVal, yoy?.convVal);
+
+  } else {
+    ['cmpImpMoM','cmpImpYoY','cmpClickMoM','cmpClickYoY',
+     'cmpCostMoM','cmpCostYoY','cmpCvMoM','cmpCvYoY','cmpCpaMoM','cmpCpaYoY','cmpConvValMoM','cmpConvValYoY']
+      .forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='— %';el.className='compare-val neutral';}});
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  CHART  (monthly bar OR daily line)
+// ═══════════════════════════════════════════════════
+function renderChart(rows) {
+  const isMonthly = view === 'monthly';
+  const secLabel = {cost:'コスト',click:'クリック',imp:'IMP',cv:'CV',convVal:'経由売上',roas:'ROAS(%)'}[trendMetric];
+  const secColor = {cost:'#1462D4',click:'#0d9e6b',imp:'#7c4dff',cv:'#e07b20',convVal:'#ec4899',roas:'#f59e0b'}[trendMetric];
+
+  // Title
+  document.getElementById('chartTitle').innerHTML =
+    (isMonthly ? '月次推移' : '日別推移');
+  document.getElementById('chartMetaLeft').innerHTML =
+    `<div class="chart-meta-dot" style="background:#1462D4"></div>${isMonthly?'月次':'日別'} ${secLabel}`;
+  document.getElementById('chartMetaRight').innerHTML = '';
+
+  if (isMonthly) {
+    // ── Monthly chart: ALL months ──
+    const byMonth   = aggByMonth(allRows);
+    const labels    = byMonth.map(d => d.month.slice(0,7));
+    const costData  = byMonth.map(d => d.cost);
+    const secData   = byMonth.map(d => d[trendMetric]);
+
+    // Highlight selected month
+    const costBg  = byMonth.map(d => d.month === selectedMonth ? '#1462D4' : '#1462D455');
+    const costBdr = byMonth.map(d => d.month === selectedMonth ? '#1462D4' : '#1462D488');
+    const secBg   = byMonth.map(d => d.month === selectedMonth ? secColor  : secColor + '55');
+    const secBdr  = byMonth.map(d => d.month === selectedMonth ? secColor  : secColor + '88');
+    // convVal と roas は派生計算
+    const roasMonthData  = byMonth.map(d => (d.cost>0&&d.convVal>0)?(d.convVal/d.cost)*100:(d.rdDen>0?d.rdNum/d.rdDen:null));
+    const convValMonthData = byMonth.map(d => d.convVal||0);
+
+    // Meta row
+    if (trendMetric === 'cost') {
+      // コスト単独 → 棒グラフのみ
+      document.getElementById('chartMetaLeft').innerHTML =
+        `<div class="chart-meta-dot" style="background:#1462D4;border-radius:2px"></div>コスト（棒）`;
+      document.getElementById('chartMetaRight').innerHTML = '';
+    } else {
+      document.getElementById('chartMetaLeft').innerHTML =
+        `<div class="chart-meta-dot" style="background:#1462D4;border-radius:2px"></div>コスト（棒）`;
+      document.getElementById('chartMetaRight').innerHTML =
+        `<div class="chart-meta-dot" style="background:${secColor}"></div>${secLabel}（線）`;
+    }
+
+    // Build datasets
+    const datasets = [];
+
+    if (trendMetric === 'cost') {
+      // コスト棒グラフのみ
+      datasets.push({
+        type: 'bar',
+        label: 'コスト',
+        data: costData,
+        backgroundColor: costBg,
+        borderColor: costBdr,
+        borderWidth: 1,
+        borderRadius: 4,
+        yAxisID: 'y',
+      });
+    } else {
+      // コスト棒 + 指標折れ線（コンボチャート）
+      datasets.push({
+        type: 'bar',
+        label: 'コスト',
+        data: costData,
+        backgroundColor: costBg,
+        borderColor: costBdr,
+        borderWidth: 1,
+        borderRadius: 4,
+        yAxisID: 'y',
+        order: 2,
+      });
+      datasets.push({
+        type: 'line',
+        label: secLabel,
+        data: secData,
+        borderColor: secColor,
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointRadius: byMonth.map(d => d.month === selectedMonth ? 6 : 4),
+        pointHoverRadius: 7,
+        pointBackgroundColor: secBg,
+        pointBorderColor: secBdr,
+        pointBorderWidth: 2,
+        tension: 0.35,
+        yAxisID: 'y1',
+        order: 1,
+      });
+    }
+
+    if (mainChartInst) mainChartInst.destroy();
+    mainChartInst = new Chart(document.getElementById('mainChart'), {
+      type: 'bar', // outer type (overridden per-dataset)
+      data: { labels, datasets },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction: { mode:'index', intersect:false },
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#fff',titleColor:'#1a2233',bodyColor:'#5a6a84',
+            borderColor:'#dde4ee',borderWidth:1,padding:10,
+            callbacks:{label:ctx=>{
+              const v = ctx.parsed.y;
+              if (ctx.dataset.label==='コスト') return ' コスト: ¥'+Math.round(v).toLocaleString('ja-JP');
+              return ` ${secLabel}: `+Math.round(v).toLocaleString('ja-JP');
+            }}
+          }
+        },
+        scales:{
+          x:{
+            grid:{display:false},
+            ticks:{font:{size:10},color:'#8a9ab8'}
+          },
+          y:{
+            position:'left',
+            grid:{color:'#f0f4f8'},
+            ticks:{font:{size:10},color:'#8a9ab8',
+              callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}
+          },
+          y1: trendMetric==='cost' ? {display:false} : {
+            position:'right',
+            grid:{display:false},
+            ticks:{font:{size:10},color:secColor,
+              callback:v=>Math.round(v).toLocaleString('ja-JP')}
+          }
+        }
+      }
+    });
+
+  } else {
+    // ── Daily combo chart: コスト棒 + 指標折れ線 ──
+    const byDate   = aggByDate(rows);
+    const labels   = byDate.map(d => d.date.slice(5));
+    const costData = byDate.map(d => d.cost);
+    const roasDailyData   = byDate.map(d => (d.cost>0&&d.convVal>0)?(d.convVal/d.cost)*100:(d.rdDen>0?d.rdNum/d.rdDen:null));
+    const convValDailyData = byDate.map(d => d.convVal||0);
+    const _rawSecD = {convVal:convValDailyData, roas:roasDailyData};
+    const secData  = _rawSecD[trendMetric] || byDate.map(d => d[trendMetric]);
+
+    // Meta row
+    if (trendMetric === 'cost') {
+      document.getElementById('chartMetaLeft').innerHTML =
+        `<div class="chart-meta-dot" style="background:#1462D4;border-radius:2px"></div>コスト（棒）`;
+      document.getElementById('chartMetaRight').innerHTML = '';
+    } else {
+      document.getElementById('chartMetaLeft').innerHTML =
+        `<div class="chart-meta-dot" style="background:#1462D4;border-radius:2px"></div>コスト（棒）`;
+      document.getElementById('chartMetaRight').innerHTML =
+        `<div class="chart-meta-dot" style="background:${secColor}"></div>${secLabel}（線）`;
+    }
+
+    const datasets = trendMetric === 'cost' ? [
+      // コストのみ → 棒グラフ
+      {
+        type: 'bar',
+        label: 'コスト',
+        data: costData,
+        backgroundColor: 'rgba(20,98,212,0.55)',
+        borderColor: '#1462D4',
+        borderWidth: 1,
+        borderRadius: 2,
+        yAxisID: 'y',
+      }
+    ] : [
+      // コスト棒 + 指標折れ線
+      {
+        type: 'bar',
+        label: 'コスト',
+        data: costData,
+        backgroundColor: 'rgba(20,98,212,0.35)',
+        borderColor: 'rgba(20,98,212,0.6)',
+        borderWidth: 1,
+        borderRadius: 2,
+        yAxisID: 'y',
+        order: 2,
+      },
+      {
+        type: 'line',
+        label: secLabel,
+        data: secData,
+        borderColor: secColor,
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: byDate.length > 60 ? 1 : 3,
+        pointHoverRadius: 5,
+        tension: 0.35,
+        yAxisID: 'y1',
+        order: 1,
+      }
+    ];
+
+    if (mainChartInst) mainChartInst.destroy();
+    mainChartInst = new Chart(document.getElementById('mainChart'), {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction: { mode:'index', intersect:false },
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#fff',titleColor:'#1a2233',bodyColor:'#5a6a84',
+            borderColor:'#dde4ee',borderWidth:1,padding:10,
+            callbacks:{label:ctx=>{
+              const v = ctx.parsed.y;
+              if (ctx.dataset.label==='コスト') return ' コスト: ¥'+Math.round(v).toLocaleString('ja-JP');
+              return ` ${secLabel}: `+Math.round(v).toLocaleString('ja-JP');
+            }}
+          }
+        },
+        scales:{
+          x:{
+            grid:{display:false},
+            ticks:{font:{size:10},color:'#8a9ab8',
+              // 日付が多い場合は間引き
+              maxTicksLimit: byDate.length > 60 ? 20 : byDate.length > 30 ? 15 : undefined,
+              maxRotation: 45,
+            }
+          },
+          y:{
+            position:'left',
+            grid:{color:'#f0f4f8'},
+            ticks:{font:{size:10},color:'#8a9ab8',
+              callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}
+          },
+          y1: trendMetric==='cost' ? {display:false} : {
+            position:'right',
+            grid:{display:false},
+            ticks:{font:{size:10},color:secColor,
+              callback:v=>Math.round(v).toLocaleString('ja-JP')}
+          }
+        }
+      }
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  TREE TABLE
+// ═══════════════════════════════════════════════════
+function buildTree(rows) {
+  const cMap = new Map();
+  for (const r of rows) {
+    if (!cMap.has(r.camp)) cMap.set(r.camp,{name:r.camp,imp:0,click:0,cost:0,cv:0,convVal:0,rdNum:0,rdDen:0,gMap:new Map()});
+    const c=cMap.get(r.camp);
+    c.imp+=r.imp; c.click+=r.click; c.cost+=r.cost; c.cv+=r.cv; c.convVal+=r.convVal;
+    if (r.roasDirect!=null && r.roasDirect>0 && r.cost>0){c.rdNum+=r.roasDirect*r.cost;c.rdDen+=r.cost;}
+
+    if (!c.gMap.has(r.grp)) c.gMap.set(r.grp,{name:r.grp,imp:0,click:0,cost:0,cv:0,convVal:0,rdNum:0,rdDen:0,aMap:new Map()});
+    const g=c.gMap.get(r.grp);
+    g.imp+=r.imp; g.click+=r.click; g.cost+=r.cost; g.cv+=r.cv; g.convVal+=r.convVal;
+    if (r.roasDirect!=null && r.roasDirect>0 && r.cost>0){g.rdNum+=r.roasDirect*r.cost;g.rdDen+=r.cost;}
+
+    if (!g.aMap.has(r.ad)) g.aMap.set(r.ad,{name:r.ad,imp:0,click:0,cost:0,cv:0,convVal:0,rdNum:0,rdDen:0});
+    const a=g.aMap.get(r.ad);
+    a.imp+=r.imp; a.click+=r.click; a.cost+=r.cost; a.cv+=r.cv; a.convVal+=r.convVal;
+    if (r.roasDirect!=null && r.roasDirect>0 && r.cost>0){a.rdNum+=r.roasDirect*r.cost;a.rdDen+=r.cost;}
+  }
+  // ROAS: convVal/cost*100 を優先、なければ roasDirect の cost 加重平均
+  const en = d => {
+    let roas = null;
+    if (d.cost > 0 && d.convVal > 0) {
+      roas = (d.convVal / d.cost) * 100;
+    } else if (d.rdDen > 0) {
+      roas = d.rdNum / d.rdDen;
+    }
+    return {...d,
+      ctr:safe(d.click,d.imp)*100, cpc:safe(d.cost,d.click),
+      cvr:safe(d.cv,d.click)*100,  cpa:safe(d.cost,d.cv), roas};
+  };
+  const camps=[];
+  for (const[,c] of cMap){
+    const camp=en(c); camp.grps=[];
+    for (const[,g] of c.gMap){
+      const grp=en(g); grp.ads=[...g.aMap.values()].map(en).sort((a,b)=>b.cost-a.cost);
+      camp.grps.push(grp);
+    }
+    camp.grps.sort((a,b)=>b.cost-a.cost); camps.push(camp);
+  }
+  return camps.sort((a,b)=>b.cost-a.cost);
+}
+
+function numCells(d) {
+  // ★ ROAS: CSV列の値をそのまま%表示（小数点第2位）
+  const roas = d.roas!=null && d.roas>0
+    ? `<td class="td-roas">${jf(d.roas,0)}%</td>`
+    : `<td class="td-roas"><span class="roas-none">—</span></td>`;
+  const convValCell = d.convVal>0
+    ? `<td class="td-num" style="color:#ec4899;font-weight:600">¥${Math.round(d.convVal).toLocaleString('ja-JP')}</td>`
+    : `<td class="td-num" style="color:var(--text-muted)">—</td>`;
+  return `
+    <td class="td-num">${d.imp.toLocaleString('ja-JP')}</td>
+    <td class="td-num">${d.click.toLocaleString('ja-JP')}</td>
+    <td class="td-num">${jf(d.ctr)}%</td>
+    <td class="td-num">${d.cost>0?'¥'+Math.round(d.cost).toLocaleString('ja-JP'):'—'}</td>
+    <td class="td-num">${yen(d.cpc)}</td>
+    <td class="td-num">${jp(d.cv)}</td>
+    <td class="td-num">${jf(d.cvr)}%</td>
+    <td class="td-num">${d.cpa>0?yen(d.cpa):'—'}</td>
+    ${convValCell}
+    ${roas}`;
+}
+
+function renderTreeTable() {
+  const trows = getTreeRows();
+  const tree  = buildTree(trows);
+  const total = agg(trows);
+  const html  = [];
+
+  // Filter count badge
+  const allT = getRows();
+  document.getElementById('filterCount').textContent =
+    (filterCamp||filterGrp||filterAd||filterDateFromVal||filterDateToVal)
+      ? `${trows.length.toLocaleString('ja-JP')} / ${allT.length.toLocaleString('ja-JP')} 件`
+      : `${allT.length.toLocaleString('ja-JP')} 件`;
+
+  // Grand total
+  html.push(`<tr class="tr-total"><td class="td-name"><div class="name-inner">
+    <button class="expand-btn leaf" tabindex="-1">▶</button>
+    <span class="name-text total">合計</span>
+  </div></td>${numCells(total)}</tr>`);
+
+  for (const camp of tree) {
+    const expC = expandedCamps.has(camp.name);
+    html.push(`<tr class="tr-camp"><td class="td-name"><div class="name-inner">
+      <button class="expand-btn" data-action="camp" data-camp="${esc(camp.name)}"
+        data-expanded="${expC}">${expC?'▼':'▶'}</button>
+      <span class="name-text camp" title="${esc(camp.name)}" data-action="open-camp" data-camp="${esc(camp.name)}">${esc(camp.name)}</span>
+    </div></td>${numCells(camp)}</tr>`);
+
+    if (expC) {
+      for (const grp of camp.grps) {
+        const gKey = camp.name + '\x00' + grp.name;
+        const expG = expandedGrps.has(gKey);
+        html.push(`<tr class="tr-grp"><td class="td-name"><div class="name-inner">
+          <span style="width:22px;flex-shrink:0"></span>
+          <button class="expand-btn" data-action="grp" data-camp="${esc(camp.name)}" data-grp="${esc(grp.name)}"
+            data-expanded="${expG}">${expG?'▼':'▶'}</button>
+          <span class="name-text grp grp-clickable" title="${esc(grp.name)}" data-action="open-grp" data-camp="${esc(camp.name)}" data-grp="${esc(grp.name)}">${esc(grp.name)}</span>
+        </div></td>${numCells(grp)}</tr>`);
+
+        if (expG) {
+          for (const ad of grp.ads) {
+            html.push(`<tr class="tr-ad"><td class="td-name"><div class="name-inner">
+              <span style="width:44px;flex-shrink:0"></span>
+              <button class="expand-btn leaf" tabindex="-1">▶</button>
+              <span class="name-text ad" title="${esc(ad.name)}">${esc(ad.name)}</span>
+            </div></td>${numCells(ad)}</tr>`);
+          }
+        }
+      }
+    }
+  }
+  document.getElementById('treeBody').innerHTML = html.join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  VIEW / CONTROLS
+// ═══════════════════════════════════════════════════
+function setView(v) {
+  view = v;
+  document.getElementById('btnMonthly').classList.toggle('active', v==='monthly');
+  document.getElementById('btnDaily').classList.toggle('active',   v==='daily');
+  document.getElementById('monthControls').classList.toggle('visible', v==='monthly');
+  document.getElementById('dateControls').classList.toggle('visible',  v==='daily');
+  dailyFilter = null;
+  renderAll();
+}
+
+function updatePeriod(rows) {
+  const dates = [...new Set(rows.map(r=>r.date))].sort();
+  if (!dates.length) { document.getElementById('periodLabel').textContent='データなし'; return; }
+  document.getElementById('periodLabel').textContent =
+    `集計期間：${dates[0]} 〜 ${dates[dates.length-1]}（${dates.length}日間）`;
+}
+
+function renderAll() {
+  const rows = getRows();
+  updatePeriod(rows);
+  renderKPI(rows);
+  renderChart(rows);
+  renderTop10(rows);
+  renderTreeTable();
+}
+
+// ═══════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+
+  // API設定パネルのトグル
+  document.getElementById('apiToggleBtn').addEventListener('click', () => {
+    const body = document.getElementById('apiSettingsBody');
+    const btn  = document.getElementById('apiToggleBtn');
+    const isOpen = !body.classList.contains('hidden');
+    body.classList.toggle('hidden', isOpen);
+    btn.textContent = isOpen ? '設定を開く ▼' : '設定を閉じる ▲';
+  });
+
+  // 入力監視 → 接続ボタン活性化
+  ['apiClientId','apiProxyUrl','apiAccountId'].forEach(id => {
+    document.getElementById(id).addEventListener('input', checkApiReady);
+  });
+
+  // 保存済み設定の復元
+  loadApiSettings();
+
+  // APIから取得した日付のデフォルト値
+  const today = new Date().toISOString().slice(0,10);
+  const monthAgo = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+  if (!document.getElementById('apiDateFrom').value) document.getElementById('apiDateFrom').value = monthAgo;
+  if (!document.getElementById('apiDateTo').value)   document.getElementById('apiDateTo').value   = today;
+
+
+  // Tree toggle (event delegation)
+  document.getElementById('treeBody').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    if (btn.dataset.action === 'camp') {
+      const n = btn.dataset.camp;
+      expandedCamps.has(n) ? expandedCamps.delete(n) : expandedCamps.add(n);
+    } else if (btn.dataset.action === 'grp') {
+      const k = btn.dataset.camp + '\x00' + btn.dataset.grp;
+      expandedGrps.has(k) ? expandedGrps.delete(k) : expandedGrps.add(k);
+    }
+    renderTreeTable();
+  });
+
+  // Bottom tabs
+  document.querySelector('.bottom-tabs-nav').addEventListener('click', e => {
+    const btn = e.target.closest('.bottom-tab-btn');
+    if (!btn) return;
+    const tabId = btn.dataset.tab;
+    document.querySelectorAll('.bottom-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.bottom-tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+    if (tabId === 'tab-budget') renderBudget();
+    if (tabId === 'tab-summary') renderSummary();
+  });
+
+  document.getElementById('btnExpandAll').addEventListener('click', () => {
+    const tree = buildTree(getTreeRows());
+    for (const c of tree) {
+      expandedCamps.add(c.name);
+      for (const g of c.grps) expandedGrps.add(c.name + '\x00' + g.name);
+    }
+    renderTreeTable();
+  });
+  document.getElementById('btnCollapseAll').addEventListener('click', () => {
+    expandedCamps.clear(); expandedGrps.clear(); renderTreeTable();
+  });
+
+  // Metric toggle
+  document.querySelector('.metric-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-metric]');
+    if (!btn) return;
+    trendMetric = btn.dataset.metric;
+    document.querySelectorAll('.metric-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderChart(getRows());
+  });
+
+  // Month select
+  document.getElementById('monthSelect').addEventListener('change', e => {
+    selectedMonth = e.target.value; renderAll();
+  });
+
+  // Date filter
+  ['dateFrom','dateTo'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      const from=document.getElementById('dateFrom').value, to=document.getElementById('dateTo').value;
+      dailyFilter=(from&&to)?{from,to}:from?{from,to:from}:null;
+      renderAll();
+    });
+  });
+
+  // Tree dimension filters
+  // Tree date filter
+  document.getElementById('filterDateFrom').addEventListener('change', e => {
+    filterDateFromVal = e.target.value; expandedCamps.clear(); expandedGrps.clear(); renderTreeTable();
+  });
+  document.getElementById('filterDateTo').addEventListener('change', e => {
+    filterDateToVal = e.target.value; expandedCamps.clear(); expandedGrps.clear(); renderTreeTable();
+  });
+
+  document.getElementById('filterCamp').addEventListener('change', e => {
+    filterCamp = e.target.value; expandedCamps.clear(); expandedGrps.clear(); renderTreeTable();
+  });
+  document.getElementById('filterGrp').addEventListener('change', e => {
+    filterGrp = e.target.value; expandedCamps.clear(); expandedGrps.clear(); renderTreeTable();
+  });
+  let adFilterTimer = null;
+  document.getElementById('filterAd').addEventListener('input', e => {
+    clearTimeout(adFilterTimer);
+    adFilterTimer = setTimeout(() => {
+      filterAd = e.target.value.trim();
+      expandedCamps.clear(); expandedGrps.clear(); renderTreeTable();
+    }, 250);
+  });
+  document.getElementById('btnFilterReset').addEventListener('click', () => {
+    filterCamp=''; filterGrp=''; filterAd='';
+    filterDateFromVal=''; filterDateToVal='';
+    document.getElementById('filterDateFrom').value='';
+    document.getElementById('filterDateTo').value='';
+    document.getElementById('filterCamp').value='';
+    document.getElementById('filterGrp').value='';
+    document.getElementById('filterAd').value='';
+    expandedCamps.clear(); expandedGrps.clear(); renderTreeTable();
+  });
+
+  // AI Analysis buttons
+  // Campaign detail panel
+  document.getElementById('campDetailClose').addEventListener('click', closeCampDetail);
+  document.getElementById('campDetailOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('campDetailOverlay')) closeCampDetail();
+  });
+  // Metric toggles inside panel
+  document.getElementById('cdMonthlyToggle').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-cdmetric]');
+    if (!btn) return;
+    cdMonthlyMetric = btn.dataset.cdmetric;
+    document.querySelectorAll('#cdMonthlyToggle .camp-metric-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    if (currentCampName) {
+      let r = getCampDetailRows(currentCampName);
+      if (currentGrpName) r = r.filter(x => x.grp === currentGrpName);
+      renderCdMonthlyChart(r);
+    }
+  });
+  document.getElementById('cdDailyToggle').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-cddmetric]');
+    if (!btn) return;
+    cdDailyMetric = btn.dataset.cddmetric;
+    document.querySelectorAll('#cdDailyToggle .camp-metric-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    if (currentCampName) {
+      let r = getCampDetailRows(currentCampName);
+      if (currentGrpName) r = r.filter(x => x.grp === currentGrpName);
+      renderCdDailyChart(r);
+    }
+  });
+  // Open panel when clicking campaign / grp name in table
+  document.getElementById('treeBody').addEventListener('click', e => {
+    const campSpan = e.target.closest('span[data-action="open-camp"]');
+    if (campSpan) { openCampDetail(campSpan.dataset.camp); return; }
+    const grpSpan = e.target.closest('span[data-action="open-grp"]');
+    if (grpSpan) { openCampDetail(grpSpan.dataset.camp, grpSpan.dataset.grp); return; }
+  });
+
+  // CD tab switching
+  document.getElementById('campDetailPanel').addEventListener('click', e => {
+    const tabBtn = e.target.closest('.cd-tab-btn[data-cdtab]');
+    if (tabBtn) {
+      const tid = tabBtn.dataset.cdtab;
+      document.querySelectorAll('.cd-tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.cd-tab-panel').forEach(p=>p.classList.remove('active'));
+      tabBtn.classList.add('active');
+      document.getElementById(tid).classList.add('active');
+      // Render ROAS chart on demand
+      return;
+    }
+    // Breadcrumb back to campaign
+    const bc = e.target.closest('a[data-bc-camp]');
+    if (bc) { openCampDetail(bc.dataset.bcCamp, null); }
+  });
+  // Keyboard close
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeCampDetail();
+      document.getElementById('manualOverlay').classList.add('hidden');
+    }
+  });
+
+
+
+  // File inputs
+  document.getElementById('csvInput').addEventListener('change',  e => { handleFiles(e.target.files); e.target.value=''; });
+  document.getElementById('csvInput2').addEventListener('change', e => { handleFiles(e.target.files); e.target.value=''; });
+
+  // Drag & Drop
+  const z = document.getElementById('uploadZone');
+  z.addEventListener('dragover',  e => { e.preventDefault(); z.classList.add('drag-over'); });
+  z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
+  z.addEventListener('drop', e => {
+    e.preventDefault(); z.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+
+  // 起動時：保存済みデータがあれば自動復元
+  restoreSavedData();
+});
+
+// ═══════════════════════════════════════════════════
+//  ROAS TOP10
+// ═══════════════════════════════════════════════════
+function renderTop10(rows) {
+  // Aggregate by camp / grp / ad, keep only rows with ROAS data
+  function aggDim(dimKey) {
+    const m = new Map();
+    for (const r of rows) {
+      const k = r[dimKey];
+      if (!m.has(k)) m.set(k, {name:k, cost:0, convVal:0, rdNum:0, rdDen:0});
+      const d = m.get(k);
+      d.cost += r.cost;
+      d.convVal += r.convVal;
+      if (r.roasDirect!=null && r.roasDirect>0 && r.cost>0){d.rdNum+=r.roasDirect*r.cost;d.rdDen+=r.cost;}
+    }
+    return Array.from(m.values())
+      .map(d => {
+        let roas = null;
+        if (d.cost > 0 && d.convVal > 0) roas = (d.convVal / d.cost) * 100;
+        else if (d.rdDen > 0) roas = d.rdNum / d.rdDen;
+        return {...d, roas};
+      })
+      .filter(d => d.roas != null && d.roas > 0)
+      .sort((a,b) => b.roas - a.roas)
+      .slice(0, 5);
+  }
+
+  function renderBarList(containerId, items) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!items.length) { el.innerHTML = '<div class="top10-empty">ROASデータなし</div>'; return; }
+
+    const maxRoas = Math.max(...items.map(d => d.roas));
+    const maxCost = Math.max(...items.map(d => d.cost));
+
+    el.innerHTML = items.map((d, i) => {
+      const rank = i + 1;
+      const rankCls = rank===1?'gold':rank===2?'silver':rank===3?'bronze':'plain';
+      const rankStr = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+      const name = d.name.length > 18 ? d.name.slice(0, 18) + '…' : d.name;
+      const roasPct = Math.round((d.roas / maxRoas) * 100);
+      const costPct = Math.round((d.cost / maxCost) * 100);
+      const roasLabel = Math.round(d.roas).toLocaleString('ja-JP') + '%';
+      const costLabel = '¥' + Math.round(d.cost).toLocaleString('ja-JP');
+
+      return `<div class="top5-item">
+        <div class="top5-header">
+          <span class="top5-rank ${rankCls}">${rankStr}</span>
+          <span class="top5-name" title="${d.name}" data-tooltip="${d.name.replace(/"/g,'&quot;')}">${name}</span>
+        </div>
+        <div class="top5-bars">
+          <div class="top5-bar-row">
+            <span class="top5-bar-tag">ROAS</span>
+            <div class="top5-bar-track">
+              <div class="top5-bar-fill roas" style="width:${roasPct}%"></div>
+            </div>
+            <span class="top5-bar-label roas">${roasLabel}</span>
+          </div>
+          <div class="top5-bar-row">
+            <span class="top5-bar-tag">コスト</span>
+            <div class="top5-bar-track">
+              <div class="top5-bar-fill cost" style="width:${costPct}%"></div>
+            </div>
+            <span class="top5-bar-label cost">${costLabel}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const campItems = aggDim('camp');
+  const grpItems  = aggDim('grp');
+  const adItems   = aggDim('ad');
+  renderBarList('top10Camp',  campItems);
+  renderBarList('top10Grp',   grpItems);
+  renderBarList('top10Ad',    adItems);
+  renderBarList('top10Camp2', campItems);
+  renderBarList('top10Grp2',  grpItems);
+  renderBarList('top10Ad2',   adItems);
+
+  // Period label
+  const dates = [...new Set(rows.map(r=>r.date))].sort();
+  const lbl=document.getElementById('top10PeriodLabel'); if(lbl) lbl.textContent =
+    dates.length ? `${dates[0]} 〜 ${dates[dates.length-1]}` : '';
+}
+
+// ═══════════════════════════════════════════════════
+//  CAMPAIGN DETAIL PANEL
+// ═══════════════════════════════════════════════════
+let cdMonthlyChart = null;
+let cdDailyChart   = null;
+let cdMonthlyMetric = 'cost';
+let cdDailyMetric   = 'cost';
+let currentCampName = null;
+let currentGrpName  = null;  // null = camp mode, string = grp mode
+
+function openCampDetail(campName, grpName=null) {
+  currentCampName = campName;
+  currentGrpName  = grpName;
+  const overlay = document.getElementById('campDetailOverlay');
+  overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  // Reset to first tab
+  document.querySelectorAll('.cd-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.cd-tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.cd-tab-btn[data-cdtab="cd-monthly"]').classList.add('active');
+  document.getElementById('cd-monthly').classList.add('active');
+  renderCampDetail(campName, grpName);
+}
+
+function closeCampDetail() {
+  document.getElementById('campDetailOverlay').classList.add('hidden');
+  document.body.style.overflow = '';
+  currentCampName = null;
+  if (cdMonthlyChart) { cdMonthlyChart.destroy(); cdMonthlyChart = null; }
+  if (cdDailyChart)   { cdDailyChart.destroy();   cdDailyChart   = null; }
+  currentGrpName = null;
+}
+
+function getCampDetailRows(campName) {
+  // ★ 完全独立: 階層テーブルの日付フィルターのみ使用
+  let rows = allRows.filter(r => r.camp === campName);
+  if (filterDateFromVal) rows = rows.filter(r => r.date >= filterDateFromVal);
+  if (filterDateToVal)   rows = rows.filter(r => r.date <= filterDateToVal);
+  return rows;
+}
+
+function renderCampDetail(campName, grpName=null) {
+  let rows = getCampDetailRows(campName);
+  if (grpName) rows = rows.filter(r => r.grp === grpName);
+
+  // Breadcrumb
+  const bc = document.getElementById('campDetailBreadcrumb');
+  if (grpName) {
+    bc.innerHTML = `<a data-bc-camp="${esc(campName)}">${campName.length>30?campName.slice(0,30)+'…':campName}</a> ＞`;
+  } else { bc.innerHTML = ''; }
+  document.getElementById('campDetailTitle').textContent = grpName || campName;
+
+  const dates = [...new Set(rows.map(r=>r.date))].sort();
+  const months = [...new Set(rows.map(r=>r.month))].sort();
+  let periodStr = 'データなし';
+  if (dates.length) {
+    periodStr = `${dates[0]} 〜 ${dates[dates.length-1]}（${dates.length}日間 / ${months.length}ヶ月）`;
+  }
+  document.getElementById('campDetailSubtitle').textContent = periodStr;
+
+  const a = agg(rows);
+  document.getElementById('cdKpiClick').textContent = a.click.toLocaleString('ja-JP');
+  document.getElementById('cdKpiCtr').textContent   = `CTR: ${jf(a.ctr)}%`;
+  document.getElementById('cdKpiCost').textContent  = a.cost>0 ? '¥'+Math.round(a.cost).toLocaleString('ja-JP') : '—';
+  document.getElementById('cdKpiCpc').textContent   = `CPC: ${yen(a.cpc)}`;
+  document.getElementById('cdKpiCv').textContent    = jp(a.cv);
+  document.getElementById('cdKpiCvr').textContent   = `CVR: ${jf(a.cvr)}%`;
+  document.getElementById('cdKpiRoas').textContent  = a.roas!=null ? Math.round(a.roas)+'%' : '—';
+  document.getElementById('cdKpiRoasSub').textContent = '';
+  document.getElementById('cdKpiConvVal').textContent = a.convVal>0 ? '¥'+Math.round(a.convVal).toLocaleString('ja-JP') : '—';
+  document.getElementById('cdKpiConvValSub').textContent = '';
+
+  renderCdMonthlyChart(rows);
+  renderCdDailyChart(rows);
+}
+
+function cdAggByMonth(rows) {
+  const m = new Map();
+  for (const r of rows) {
+    if (!m.has(r.month)) m.set(r.month, {month:r.month,imp:0,click:0,cost:0,cv:0});
+    const x=m.get(r.month); x.imp+=r.imp; x.click+=r.click; x.cost+=r.cost; x.cv+=r.cv;
+  }
+  const existing = Array.from(m.values()).sort((a,b)=>a.month.localeCompare(b.month));
+  if (existing.length < 2) return existing;
+  // Fill missing months between first and last
+  const result = [];
+  let cur = new Date(existing[0].month + '-01');
+  const last = new Date(existing[existing.length-1].month + '-01');
+  while (cur <= last) {
+    const key = cur.toISOString().slice(0,7);
+    result.push(m.get(key) || {month:key,imp:0,click:0,cost:0,cv:0});
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return result;
+}
+function cdAggByDate(rows) {
+  const m = new Map();
+  for (const r of rows) {
+    if (!m.has(r.date)) m.set(r.date, {date:r.date,imp:0,click:0,cost:0,cv:0,convVal:0,rdNum:0,rdDen:0});
+    const x=m.get(r.date);
+    x.imp+=r.imp; x.click+=r.click; x.cost+=r.cost; x.cv+=r.cv; x.convVal+=r.convVal;
+    if (r.roasDirect!=null&&r.roasDirect>0&&r.cost>0){x.rdNum+=r.roasDirect*r.cost;x.rdDen+=r.cost;}
+  }
+  const existing = Array.from(m.values()).sort((a,b)=>a.date.localeCompare(b.date));
+  if (existing.length < 2) return existing;
+  // Fill missing dates between first and last
+  const result = [];
+  let cur = new Date(existing[0].date);
+  const last = new Date(existing[existing.length-1].date);
+  while (cur <= last) {
+    const key = cur.toISOString().slice(0,10);
+    result.push(m.get(key) || {date:key,imp:0,click:0,cost:0,cv:0});
+    cur.setDate(cur.getDate() + 1);
+  }
+  return result;
+}
+
+function buildCdComboChart(canvasId, byPeriod, labelFn, metric, existingChart) {
+  const labels   = byPeriod.map(labelFn);
+  const costData = byPeriod.map(d => d.cost);
+
+  // ROAS: convVal/cost*100 優先、なければ roasDirect 列の加重平均
+  const roasData = byPeriod.map(d => {
+    if (!d) return null;
+    const cv  = d.convVal  || 0;
+    const rn  = d.rdNum    || 0;
+    const rd  = d.rdDen    || 0;
+    const cst = d.cost     || 0;
+    if (cst > 0 && cv > 0) return (cv / cst) * 100;
+    if (rd > 0) return rn / rd;
+    return null;
+  });
+  // 経由売上: convVal優先、なければ roasDirect×コストから推計
+  const convValData = byPeriod.map(d => {
+    if (!d) return 0;
+    const cv = d.convVal || 0;
+    const rn = d.rdNum   || 0;
+    const rd = d.rdDen   || 0;
+    const cst= d.cost    || 0;
+    if (cv > 0) return cv;
+    if (rd > 0 && cst > 0) return (rn / rd) * cst / 100;
+    return 0;
+  });
+
+  const secDataMap = {cost:costData, click:byPeriod.map(d=>d.click), imp:byPeriod.map(d=>d.imp), cv:byPeriod.map(d=>d.cv), roas:roasData, convVal:convValData};
+  const secData  = secDataMap[metric] || byPeriod.map(d=>d[metric]);
+  const secLabel = {cost:'コスト',click:'クリック',imp:'IMP',cv:'CV',roas:'ROAS(%)',convVal:'経由売上'}[metric] || metric;
+  const secColor = {cost:'#1462D4',click:'#0d9e6b',imp:'#7c4dff',cv:'#e07b20',roas:'#f59e0b',convVal:'#ec4899'}[metric] || '#1462D4';
+
+  const isCostOnly = metric === 'cost';
+  const isYenMetric = metric === 'cost' || metric === 'convVal';
+  const isRoas = metric === 'roas';
+
+  if (existingChart) existingChart.destroy();
+
+  const datasets = isCostOnly ? [
+    {type:'bar',label:'コスト',data:costData,backgroundColor:'rgba(20,98,212,0.55)',borderColor:'#1462D4',borderWidth:1,borderRadius:2,yAxisID:'y'}
+  ] : isRoas ? [
+    // ROAS only: line chart, no cost bar
+    {type:'line',label:'ROAS(%)',data:secData,borderColor:secColor,backgroundColor:secColor+'22',fill:true,
+     borderWidth:2,pointRadius:byPeriod.length>60?1:3,pointHoverRadius:5,tension:0.35,yAxisID:'y',spanGaps:true}
+  ] : [
+    {type:'bar',label:'コスト',data:costData,backgroundColor:'rgba(20,98,212,0.3)',borderColor:'rgba(20,98,212,0.5)',borderWidth:1,borderRadius:2,yAxisID:'y',order:2},
+    {type:'line',label:secLabel,data:secData,borderColor:secColor,backgroundColor:'transparent',borderWidth:2,
+     pointRadius:byPeriod.length>60?1:3,pointHoverRadius:5,tension:0.35,yAxisID:'y1',order:1}
+  ];
+
+  const yTickCb = v => isRoas ? Math.round(v).toLocaleString('ja-JP')+'%' : '¥'+Math.round(v).toLocaleString('ja-JP');
+  const y1TickCb = v => isYenMetric ? '¥'+Math.round(v).toLocaleString('ja-JP') : Math.round(v).toLocaleString('ja-JP');
+
+  return new Chart(document.getElementById(canvasId), {
+    type:'bar', data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#fff',titleColor:'#1a2233',bodyColor:'#5a6a84',
+        borderColor:'#dde4ee',borderWidth:1,padding:8,
+        callbacks:{label:ctx=>{
+          const v=ctx.parsed.y;
+          if (v==null) return ` ${secLabel}: —`;
+          if (ctx.dataset.label==='コスト') return ' コスト: ¥'+Math.round(v).toLocaleString('ja-JP');
+          if (isRoas) return ` ROAS: ${Math.round(v).toLocaleString('ja-JP')}%`;
+          return ` ${secLabel}: `+(isYenMetric?'¥':'')+Math.round(v).toLocaleString('ja-JP');
+        }}
+      }},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:9},color:'#8a9ab8',maxTicksLimit:byPeriod.length>30?12:undefined,maxRotation:45}},
+        y:{position:'left',grid:{color:'#f0f4f8'},ticks:{font:{size:9},color: isRoas?secColor:'#8a9ab8',callback:yTickCb}},
+        y1:(isCostOnly||isRoas)?{display:false}:{position:'right',grid:{display:false},ticks:{font:{size:9},color:secColor,callback:y1TickCb}}
+      }
+    }
+  });
+}
+
+function renderCdMonthlyChart(campRows) {
+  // ローカル日付を "YYYY-MM" 文字列に変換（toISOString はタイムゾーンのずれがあるため使用しない）
+  function toYM(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  // アンカー = フィルター期間の最終日
+  const filteredDates = campRows.map(r => r.date).filter(Boolean).sort();
+  const anchorStr = filteredDates.length
+    ? filteredDates[filteredDates.length - 1]
+    : new Date().toISOString().slice(0, 10);
+  const [ay, am] = anchorStr.slice(0, 7).split('-').map(Number);
+
+  // anchorYM = 最終日の月（表示範囲の最新月）
+  const anchorYM = `${ay}-${String(am).padStart(2, '0')}`;
+
+  // windowStart = anchorYM の12ヶ月前 → anchorYM を含めて計13ヶ月
+  const wsDate = new Date(ay, am - 1 - 12, 1); // ローカル時刻で生成
+  const windowStartYM = toYM(wsDate);
+
+  // グループフィルターも考慮して全行を集計
+  let allCampRows = currentCampName ? allRows.filter(r => r.camp === currentCampName) : campRows;
+  if (currentGrpName) allCampRows = allCampRows.filter(r => r.grp === currentGrpName);
+  const monthMap = new Map();
+  for (const r of allCampRows) {
+    if (!r.month || r.month < windowStartYM || r.month > anchorYM) continue;
+    if (!monthMap.has(r.month)) monthMap.set(r.month, {month:r.month,imp:0,click:0,cost:0,cv:0,convVal:0,rdNum:0,rdDen:0});
+    const x = monthMap.get(r.month);
+    x.imp += r.imp; x.click += r.click; x.cost += r.cost; x.cv += r.cv;
+    x.convVal += (r.convVal || 0);
+    if (r.roasDirect != null && r.roasDirect > 0 && r.cost > 0) {
+      x.rdNum += r.roasDirect * r.cost;
+      x.rdDen += r.cost;
+    }
+  }
+
+  // windowStartYM ～ anchorYM を1ヶ月ずつ埋める（データなし月はゼロ）
+  const result = [];
+  let curDate = new Date(wsDate.getFullYear(), wsDate.getMonth(), 1);
+  while (toYM(curDate) <= anchorYM) {
+    const key = toYM(curDate);
+    result.push(monthMap.get(key) || {month:key, imp:0, click:0, cost:0, cv:0, convVal:0, rdNum:0, rdDen:0});
+    curDate.setMonth(curDate.getMonth() + 1);
+  }
+
+  cdMonthlyChart = buildCdComboChart('cdMonthlyChart', result, d=>d.month.slice(0,7), cdMonthlyMetric, cdMonthlyChart);
+}
+
+function renderCdDailyChart(campRows) {
+  // campRows already filtered by grp in renderCampDetail
+  const byDate = cdAggByDate(campRows);
+  cdDailyChart = buildCdComboChart('cdDailyChart', byDate, d=>d.date.slice(5), cdDailyMetric, cdDailyChart);
+}
+
+// ═══════════════════════════════════════════════════
+//  ROAS TOP5
+// ═══════════════════════════════════════════════════
+function renderTop10(rows) {
+  function aggDim(dimKey) {
+    const m = new Map();
+    for (const r of rows) {
+      const k = r[dimKey];
+      if (!m.has(k)) m.set(k, {name:k, cost:0, convVal:0, rdNum:0, rdDen:0});
+      const d = m.get(k);
+      d.cost += r.cost;
+      d.convVal += r.convVal;
+      if (r.roasDirect!=null && r.roasDirect>0 && r.cost>0){d.rdNum+=r.roasDirect*r.cost;d.rdDen+=r.cost;}
+    }
+    return Array.from(m.values())
+      .map(d => {
+        let roas = null;
+        if (d.cost > 0 && d.convVal > 0) roas = (d.convVal / d.cost) * 100;
+        else if (d.rdDen > 0) roas = d.rdNum / d.rdDen;
+        return {...d, roas};
+      })
+      .filter(d => d.roas != null && d.roas > 0)
+      .sort((a,b) => b.roas - a.roas)
+      .slice(0, 5);
+  }
+
+  function renderBarList(containerId, items) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!items.length) { el.innerHTML = '<div class="top10-empty">ROASデータなし</div>'; return; }
+
+    const maxRoas = Math.max(...items.map(d => d.roas));
+    const maxCost = Math.max(...items.map(d => d.cost));
+
+    el.innerHTML = items.map((d, i) => {
+      const rank = i + 1;
+      const rankCls = rank===1?'gold':rank===2?'silver':rank===3?'bronze':'plain';
+      const rankStr = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+      const name = d.name.length > 18 ? d.name.slice(0, 18) + '…' : d.name;
+      const roasPct = Math.round((d.roas / maxRoas) * 100);
+      const costPct = Math.round((d.cost / maxCost) * 100);
+      const roasLabel = Math.round(d.roas).toLocaleString('ja-JP') + '%';
+      const costLabel = '¥' + Math.round(d.cost).toLocaleString('ja-JP');
+
+      return `<div class="top5-item">
+        <div class="top5-header">
+          <span class="top5-rank ${rankCls}">${rankStr}</span>
+          <span class="top5-name" title="${d.name}" data-tooltip="${d.name.replace(/"/g,'&quot;')}">${name}</span>
+        </div>
+        <div class="top5-bars">
+          <div class="top5-bar-row">
+            <span class="top5-bar-tag">ROAS</span>
+            <div class="top5-bar-track">
+              <div class="top5-bar-fill roas" style="width:${roasPct}%"></div>
+            </div>
+            <span class="top5-bar-label roas">${roasLabel}</span>
+          </div>
+          <div class="top5-bar-row">
+            <span class="top5-bar-tag">コスト</span>
+            <div class="top5-bar-track">
+              <div class="top5-bar-fill cost" style="width:${costPct}%"></div>
+            </div>
+            <span class="top5-bar-label cost">${costLabel}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const campItems = aggDim('camp');
+  const grpItems  = aggDim('grp');
+  const adItems   = aggDim('ad');
+  renderBarList('top10Camp',  campItems);
+  renderBarList('top10Grp',   grpItems);
+  renderBarList('top10Ad',    adItems);
+  renderBarList('top10Camp2', campItems);
+  renderBarList('top10Grp2',  grpItems);
+  renderBarList('top10Ad2',   adItems);
+
+  const dates = [...new Set(rows.map(r=>r.date))].sort();
+  const lbl=document.getElementById('top10PeriodLabel'); if(lbl) lbl.textContent =
+    dates.length ? `${dates[0]} 〜 ${dates[dates.length-1]}` : '';
+}
+
+// ═══════════════════════════════════════════════════
+//  WEEKLY REPORT
+// ═══════════════════════════════════════════════════
+function initWeeklyReport() {
+  const sel = document.getElementById('wrMonth');
+  if (!sel) return;
+  sel.innerHTML = availableMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
+  sel.value = availableMonths[availableMonths.length-1];
+}
+
+function generateWeeklyReport() {
+  const ym     = document.getElementById('wrMonth').value;
+  const dim    = document.getElementById('wrDim').value;
+  const summary = document.getElementById('wrSummary').value.trim();
+  if (!ym) { alert('対象月を選択してください'); return; }
+
+  const curRows  = getRowsForMonth(ym);
+  const momKey   = prevMonthKey(ym);
+  const yoyKey   = prevYearKey(ym);
+  const momRows  = availableMonths.includes(momKey) ? getRowsForMonth(momKey) : [];
+  const yoyRows  = availableMonths.includes(yoyKey) ? getRowsForMonth(yoyKey) : [];
+
+  const totCur = agg(curRows);
+  const totMom = momRows.length ? agg(momRows) : null;
+  const totYoy = yoyRows.length ? agg(yoyRows) : null;
+
+  function diffStr(cur, prev) {
+    if (!prev || prev===0) return '— %';
+    const r = ((cur-prev)/Math.abs(prev))*100;
+    return (r>=0?'+':'')+jf(r,1)+'%';
+  }
+
+  const manualBudget = document.getElementById('wrBudget') ? document.getElementById('wrBudget').value.trim() : '';
+  const autoBudget = bgProgressForMonth(ym, totCur.cost);
+  const budgetStr = manualBudget!=='' ? manualBudget+'%' : (autoBudget!=null ? autoBudget.toFixed(2)+'%' : '—%');
+
+  const lines = [];
+  lines.push(`【コマースアドマネージャー 週報 ${ym}】`);
+  lines.push('');
+  lines.push('＜合計＞');
+  lines.push(`・予算進捗：${budgetStr}`);
+  lines.push(`・広告費：${totCur.cost>0?'¥'+Math.round(totCur.cost).toLocaleString('ja-JP'):'—'}`);
+  lines.push(`・クリック数：${jp(totCur.click)}`);
+  lines.push(`・CPC：${yen(totCur.cpc)}`);
+  lines.push(`・CVR：${(totCur.cvr!=null&&!isNaN(totCur.cvr))?jf(totCur.cvr,1)+'%':'—'}`);
+  lines.push(`・売上：${totCur.convVal>0?'¥'+Math.round(totCur.convVal).toLocaleString('ja-JP'):'—'}`);
+  lines.push(`・ROAS：${totCur.roas!=null?totCur.roas.toFixed(2)+'%':'—'}`);
+  lines.push('');
+
+  const dimLabel = dim==='camp' ? 'キャンペーン' : '広告グループ';
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`■ ${dimLabel}別実績（コスト降順）`);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+  function aggByDimKey(rows, key) {
+    const m = new Map();
+    for (const r of rows) {
+      const k = r[key];
+      if (!m.has(k)) m.set(k, {name:k, imp:0, click:0, cost:0, cv:0, convVal:0, rdNum:0, rdDen:0});
+      const d = m.get(k);
+      d.imp+=r.imp; d.click+=r.click; d.cost+=r.cost; d.cv+=r.cv; d.convVal+=r.convVal;
+      if (r.roasDirect!=null&&r.roasDirect>0&&r.cost>0){d.rdNum+=r.roasDirect*r.cost;d.rdDen+=r.cost;}
+    }
+    return Array.from(m.values()).map(d=>({...d,
+      ctr:safe(d.click,d.imp)*100, cpc:safe(d.cost,d.click),
+      cvr:safe(d.cv,d.click)*100, cpa:safe(d.cost,d.cv),
+      roas:(d.cost>0&&d.convVal>0)?(d.convVal/d.cost)*100:(d.rdDen>0?d.rdNum/d.rdDen:null)
+    })).sort((a,b)=>b.cost-a.cost);
+  }
+
+  const curByDim = aggByDimKey(curRows, dim);
+  const momByDim = new Map(aggByDimKey(momRows, dim).map(d=>[d.name,d]));
+  const yoyByDim = new Map(aggByDimKey(yoyRows, dim).map(d=>[d.name,d]));
+
+  for (const d of curByDim) {
+    const m = momByDim.get(d.name);
+    const y = yoyByDim.get(d.name);
+    lines.push('');
+    lines.push(`＜${d.name}＞`);
+    lines.push(`・広告費：${d.cost>0?'¥'+Math.round(d.cost).toLocaleString('ja-JP'):'—'}`);
+    lines.push(`・クリック数：${jp(d.click)}`);
+    lines.push(`・CPC：${yen(d.cpc)}`);
+    lines.push(`・CVR：${(d.cvr!=null&&!isNaN(d.cvr))?jf(d.cvr,1)+'%':'—'}`);
+    lines.push(`・売上：${d.convVal>0?'¥'+Math.round(d.convVal).toLocaleString('ja-JP'):'—'}`);
+    lines.push(`・ROAS：${d.roas!=null?d.roas.toFixed(2)+'%':'—'}`);
+  }
+
+  if (summary) {
+    lines.push('');
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines.push('■ 総括');
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines.push(summary);
+  }
+
+  document.getElementById('wrOutput').value = lines.join('\n');
+}
+
+function copyWeeklyReport() {
+  const text = document.getElementById('wrOutput').value;
+  if (!text) { alert('先に「週報を生成」を押してください'); return; }
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('wrCopyBtn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ コピーしました';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  YAHOO ADS API CONNECT
+// ═══════════════════════════════════════════════════
+
+// API設定をlocalStorageに保存・復元
+function saveApiSettings() {
+  const settings = {
+    clientId:    document.getElementById('apiClientId').value.trim(),
+    proxyUrl:    document.getElementById('apiProxyUrl').value.trim(),
+    accountId:   document.getElementById('apiAccountId').value.trim(),
+    dateFrom:    document.getElementById('apiDateFrom').value,
+    dateTo:      document.getElementById('apiDateTo').value,
+    reportType:  document.getElementById('apiReportType').value,
+  };
+  // シークレット・トークンはセッション中のみ保持（localStorageには保存しない）
+  localStorage.setItem('yahooAdsApiSettings', JSON.stringify(settings));
+  setApiStatus('✓ 設定を保存しました', 'success');
+}
+
+function loadApiSettings() {
+  try {
+    const saved = localStorage.getItem('yahooAdsApiSettings');
+    if (!saved) return;
+    const s = JSON.parse(saved);
+    if (s.clientId)   document.getElementById('apiClientId').value   = s.clientId;
+    if (s.proxyUrl)   document.getElementById('apiProxyUrl').value    = s.proxyUrl;
+    if (s.accountId)  document.getElementById('apiAccountId').value   = s.accountId;
+    if (s.dateFrom)   document.getElementById('apiDateFrom').value    = s.dateFrom;
+    if (s.dateTo)     document.getElementById('apiDateTo').value      = s.dateTo;
+    if (s.reportType) document.getElementById('apiReportType').value  = s.reportType;
+    checkApiReady();
+  } catch(_) {}
+}
+
+function checkApiReady() {
+  const clientId   = document.getElementById('apiClientId').value.trim();
+  const proxyUrl   = document.getElementById('apiProxyUrl').value.trim().replace(/\/+$/, ''); // 末尾スラッシュを除去
+  const accountId  = document.getElementById('apiAccountId').value.trim();
+  const btn = document.getElementById('apiConnectBtn');
+  const badge = document.getElementById('apiBadge');
+  if (clientId && proxyUrl && accountId) {
+    btn.disabled = false;
+    btn.classList.add('enabled');
+    badge.textContent = '接続準備完了';
+    badge.className = 'api-badge ready';
+    setApiStatus('認証情報が入力されました。「データを取得」で接続できます', 'ready');
+  } else {
+    btn.disabled = true;
+    btn.classList.remove('enabled');
+    badge.textContent = '申請待ち';
+    badge.className = 'api-badge pending';
+  }
+}
+
+function setApiStatus(msg, type) {
+  const el = document.getElementById('apiStatusMsg');
+  el.textContent = msg;
+  el.style.color = type==='success'?'var(--success)':type==='error'?'var(--danger)':type==='ready'?'var(--primary)':'var(--text-muted)';
+}
+
+// コマースアドマネージャーAPI接続（プロキシ経由）
+async function connectYahooApi() {
+  const proxyUrl   = document.getElementById('apiProxyUrl').value.trim().replace(/\/+$/, ''); // 末尾スラッシュを除去
+  const clientId   = document.getElementById('apiClientId').value.trim();
+  const clientSecret = document.getElementById('apiClientSecret').value.trim();
+  const accessToken  = document.getElementById('apiAccessToken').value.trim();
+  const accountId  = document.getElementById('apiAccountId').value.trim();
+  const dateFrom   = document.getElementById('apiDateFrom').value;
+  const dateTo     = document.getElementById('apiDateTo').value;
+  const reportType = document.getElementById('apiReportType').value;
+
+  if (!proxyUrl || !accountId) {
+    setApiStatus('⚠ プロキシURLと広告アカウントIDを入力してください', 'error');
+    return;
+  }
+  if (!dateFrom || !dateTo) {
+    setApiStatus('⚠ 取得期間を指定してください', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('apiConnectBtn');
+  const icon = document.getElementById('apiConnectBtnIcon');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  icon.textContent = '⏳';
+  setApiStatus('データを取得しています...', '');
+
+  try {
+    // ── プロキシサーバーへのリクエスト ──
+    // バックエンドが用意されたら以下のエンドポイントを実装してください
+    const res = await fetch(`${proxyUrl}/yahoo-ads/report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // アクセストークンがある場合はAuthorizationヘッダーで送信
+        ...(accessToken ? {'Authorization': `Bearer ${accessToken}`} : {}),
+      },
+      body: JSON.stringify({
+        clientId,
+        clientSecret: clientSecret || undefined,
+        accountId,
+        dateFrom,
+        dateTo,
+        reportType,
+        // 取得フィールド（コマースアドマネージャーAPIのフィールド名）
+        fields: [
+          'CAMPAIGN_NAME', 'AD_GROUP_NAME', 'AD_NAME',
+          'DATE', 'MONTH',
+          'IMPRESSIONS', 'CLICKS', 'CLICK_RATE',
+          'COST', 'AVG_CPC',
+          'CONVERSIONS', 'CONVERSION_RATE', 'COST_PER_CONVERSION',
+          'CONVERSION_VALUE', 'VALUE_PER_COST'
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`HTTP ${res.status}: ${err}`);
+    }
+
+    const data = await res.json();
+
+    // ── レスポンスをCSVと同形式のallRowsに変換 ──
+    if (data.rows && Array.isArray(data.rows)) {
+      allRows = data.rows.map(r => ({
+        ad:       r.AD_NAME       || r.adName       || '(不明)',
+        camp:     r.CAMPAIGN_NAME || r.campaignName  || '(不明)',
+        grp:      r.AD_GROUP_NAME || r.adGroupName   || '(不明)',
+        date:     r.DATE          || r.date          || '',
+        month:    r.MONTH         || r.month         || (r.DATE||r.date||'').slice(0,7),
+        imp:      parseFloat(r.IMPRESSIONS    || r.impressions    || 0) || 0,
+        click:    parseFloat(r.CLICKS         || r.clicks         || 0) || 0,
+        cost:     parseFloat(r.COST           || r.cost           || 0) || 0,
+        cv:       parseFloat(r.CONVERSIONS    || r.conversions    || 0) || 0,
+        convVal:  parseFloat(r.CONVERSION_VALUE || r.conversionValue || 0) || 0,
+        roasDirect: parseFloat(r.VALUE_PER_COST || r.roasDirect || 0) || null,
+      })).filter(r => r.date);
+
+      availableMonths = [...new Set(allRows.map(r => r.month))].sort();
+      setupDashboardAfterLoad(`コマースアドマネージャーAPI (${dateFrom}〜${dateTo})`);
+      setApiStatus(`✓ ${allRows.length.toLocaleString('ja-JP')} 件のデータを取得しました`, 'success');
+      document.getElementById('apiBadge').textContent = '接続済み';
+      document.getElementById('apiBadge').className = 'api-badge connected';
+    } else {
+      throw new Error('レスポンス形式が想定と異なります。バックエンドの実装を確認してください。');
+    }
+
+  } catch(err) {
+    let msg = err.message;
+    // Failed to fetch = CORS or network issue
+    if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
+      msg = 'プロキシサーバーへの接続に失敗しました。\n① プロキシURLが正しいか確認\n② プロキシサーバーが起動中か確認（bash deploy.sh を再実行）\n③ localhost:8000 で開いているか確認（python3 -m http.server 8000）';
+    }
+    setApiStatus(`✗ エラー: ${err.message}`, 'error');
+    // Show detailed message in alert for fetch errors
+    if (err.message === 'Failed to fetch') {
+      alert('接続エラー\n\nプロキシサーバーに接続できませんでした。\n\n確認事項:\n1. プロキシURLが正しい\n   例: https://yahoo-ads-proxy-xxxx-an.a.run.app\n   （末尾の / は不要）\n2. Cloud Run が起動中\n   → deploy.sh を再実行してください\n3. ブラウザを localhost:8000 で開いている\n   → ターミナルで: python3 -m http.server 8000');
+    }
+    console.error('Yahoo Ads API Error:', err);
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    icon.textContent = '🔌';
+    btn.classList.add('enabled');
+  }
+}
+
+// CSV読み込みと共通のダッシュボード初期化処理
+// ═══════════════════════════════════════════════════
+//  予算管理（媒体別・キャンペーン別・日次マトリクス）
+// ═══════════════════════════════════════════════════
+const BG_STORE = 'cam_budget_v2';
+let bgState = {};
+let bgMedia = 'comad';
+function bgLoad(){ try { return JSON.parse(localStorage.getItem(BG_STORE) || '{}'); } catch { return {}; } }
+function bgSave(){ try { localStorage.setItem(BG_STORE, JSON.stringify(bgState)); } catch {} }
+function daysInMonth(ym){ const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0).getDate(); }
+function bgNum(v){ return (v===''||v==null||isNaN(Number(v))) ? 0 : Number(v); }
+// 月の予算進捗（％）＝ 累計広告費 ÷ 累計予算（抽出最終日まで）。予算未設定なら null
+function bgProgressForMonth(ym, actualCost){
+  if(!bgState || !Object.keys(bgState).length) bgState = bgLoad();
+  let sheet=null;
+  ['comad','yahoo'].forEach(med=>{ const s=bgState[med] && bgState[med][ym]; if(!sheet && s && s.campaigns && s.campaigns.length) sheet=s; });
+  if(!sheet) return null;
+  const dim = daysInMonth(ym);
+  const totalBudget = sheet.campaigns.reduce((a,c)=>a+bgNum(c.budget),0);
+  if(totalBudget<=0) return null;
+  const rows = getRowsForMonth(ym);
+  let lastDay=0; rows.forEach(r=>{ const d=parseInt(String(r.date).slice(8,10),10); if(d>lastDay) lastDay=d; });
+  if(lastDay<=0) return null;
+  let allocCum=0; for(let d=1; d<=lastDay; d++){ const a=(sheet.alloc && sheet.alloc[d]!=null)?Number(sheet.alloc[d]):(100/dim); allocCum+=a/100; }
+  const cumBudget = totalBudget*allocCum;
+  return cumBudget>0 ? actualCost/cumBudget*100 : null;
+}
+function bgGetSheet(media, ym){
+  if (!bgState[media]) bgState[media] = {};
+  if (!bgState[media][ym]) bgState[media][ym] = { incentive:0, campaigns:[], alloc:{}, spend:{} };
+  const s = bgState[media][ym];
+  if (!Array.isArray(s.campaigns)) s.campaigns = [];
+  if (!s.alloc)  s.alloc  = {};
+  if (!s.spend)  s.spend  = {};
+  return s;
+}
+function bgCur(){ const ym=document.getElementById('bgMonth').value; return ym?bgGetSheet(bgMedia,ym):null; }
+function bgCsvByCampDay(ym){
+  const out = {};
+  getRowsForMonth(ym).forEach(r => {
+    const d = parseInt(String(r.date).slice(8,10), 10); if (!d) return;
+    if (!out[r.camp]) out[r.camp] = {};
+    out[r.camp][d] = (out[r.camp][d] || 0) + r.cost;
+  });
+  return out;
+}
+function bgAllMonths(){
+  const set = new Set(availableMonths || []);
+  Object.values(bgState || {}).forEach(mediaObj => { if (mediaObj) Object.keys(mediaObj).forEach(ym => set.add(ym)); });
+  return [...set].filter(Boolean).sort();
+}
+function bgPopulateMonths(selectYm){
+  const sel = document.getElementById('bgMonth'); if (!sel) return;
+  const months = bgAllMonths();
+  const want = selectYm || sel.value || (availableMonths.length ? availableMonths[availableMonths.length-1] : (months[months.length-1] || ''));
+  sel.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+  sel.value = months.includes(want) ? want : (months[months.length-1] || '');
+}
+function initBudget(){
+  bgState = bgLoad();
+  bgPopulateMonths();
+  renderBudget();
+}
+function renderBudget(){
+  const sel = document.getElementById('bgMonth'); if (!sel) return;
+  const ym = sel.value;
+  const headEl = document.getElementById('bgDailyHead');
+  const bodyEl = document.getElementById('bgBody');
+  const campBody = document.getElementById('bgCampBody');
+  document.querySelectorAll('#bgMediaToggle .bg-media-btn').forEach(b => b.classList.toggle('active', b.dataset.bgmedia===bgMedia));
+  if (!ym){ headEl.innerHTML=''; bodyEl.innerHTML=''; campBody.innerHTML=''; document.getElementById('bgKpiRow').innerHTML=''; return; }
+  const s = bgGetSheet(bgMedia, ym);
+  const dim = daysInMonth(ym);
+  const [yy,mm] = ym.split('-');
+  const yen0 = v => '¥'+Math.round(v||0).toLocaleString('ja-JP');
+
+  const iEl = document.getElementById('bgIncentive');
+  if (document.activeElement !== iEl) iEl.value = s.incentive || '';
+
+  const camps = s.campaigns;
+  const totalBudget = camps.reduce((a,c)=>a+bgNum(c.budget),0);
+
+  // 予算配分（日次比率・月内合計100%想定）。未設定日は均等配分(100/dim)。
+  const allocOf = d => (s.alloc[d]!=null) ? Number(s.alloc[d]) : (100/dim);
+
+  // 広告費（実績）は読込データから自動抽出（キャンペーン名が一致するもの）
+  const csvDay = bgCsvByCampDay(ym);
+  const spendOf = (name,d) => (csvDay[name] && csvDay[name][d]!=null) ? csvDay[name][d] : 0;
+
+  // 実績のある最終日
+  let lastDay=0;
+  for (let d=1; d<=dim; d++){ let has=false; camps.forEach(c=>{ if(csvDay[c.name] && csvDay[c.name][d]!=null) has=true; }); if(has) lastDay=d; }
+
+  // キャンペーン別 累計実績
+  const campActualCum = {};
+  camps.forEach(c=>{ let cum=0; for(let d=1; d<=lastDay; d++) cum+=spendOf(c.name,d); campActualCum[c.name]=cum; });
+
+  // ── キャンペーン別予算テーブル ──
+  if (!camps.length){
+    campBody.innerHTML = `<tr><td colspan="5" class="bg-empty">Excel貼り付け・「＋ キャンペーンを追加」・「読込データからキャンペーンを取込」のいずれかでキャンペーンを登録してください。</td></tr>`;
+    document.getElementById('bgCampFoot').innerHTML='';
+  } else {
+    campBody.innerHTML = camps.map((c,i)=>{
+      const act = campActualCum[c.name]||0;
+      const rate = bgNum(c.budget)>0 ? act/bgNum(c.budget)*100 : null;
+      return `<tr>
+        <td class="bg-l"><input class="bg-campname" data-bgcamp="${i}" value="${esc(c.name)}" placeholder="キャンペーン名"></td>
+        <td><input class="bg-input bg-cost" type="number" step="1" data-bgbudget="${i}" value="${(c.budget!==''&&c.budget!=null)?c.budget:''}" placeholder="0"></td>
+        <td>${jp(act)}</td>
+        <td>${rate!=null?rate.toFixed(1)+'%':'—'}</td>
+        <td style="text-align:center"><button class="bg-del" data-bgdel="${i}" title="削除">✕</button></td>
+      </tr>`;
+    }).join('');
+    const actAll = camps.reduce((a,c)=>a+(campActualCum[c.name]||0),0);
+    document.getElementById('bgCampFoot').innerHTML =
+      `<td class="bg-l">合計（目標金額）</td><td>${jp(totalBudget)}</td><td>${jp(actAll)}</td><td>${totalBudget>0?(actAll/totalBudget*100).toFixed(1)+'%':'—'}</td><td></td>`;
+  }
+
+  // ── 日別テーブル ヘッダー（3段：日別予算シート形式） ──
+  const grpCols = () => `<th>予算</th><th>広告費</th><th>累計予算</th><th>累計広告費</th><th>累計差分</th><th>差分%</th>`;
+  headEl.innerHTML =
+    `<tr><th rowspan="3" class="bg-day">日付</th><th rowspan="3">予算配分</th>` +
+      camps.map(c=>`<th colspan="6" class="bg-grphead">${yen0(bgNum(c.budget))}</th>`).join('') +
+      `<th colspan="6" class="bg-grphead">${yen0(totalBudget)}</th></tr>` +
+    `<tr>` + camps.map(c=>`<th colspan="6" class="bg-campcol">${esc(c.name||'(無題)')}</th>`).join('') +
+      `<th colspan="6" class="bg-campcol">合計</th></tr>` +
+    `<tr>` + camps.map(grpCols).join('') + grpCols() + `</tr>`;
+
+  // 3段ヘッダーのスクロール固定位置（各段の高さを実測してtopを設定）
+  const hrows = headEl.querySelectorAll('tr');
+  if (hrows.length >= 3) {
+    const h1 = hrows[0].offsetHeight || 0;
+    const h2 = hrows[1].offsetHeight || 0;
+    if (h1) { hrows[1].querySelectorAll('th').forEach(th=>th.style.top = h1+'px'); }
+    if (h1||h2) { hrows[2].querySelectorAll('th').forEach(th=>th.style.top = (h1+h2)+'px'); }
+  }
+
+  // 配分ヒートマップ用の最大値
+  let maxAlloc = 0; for (let d=1; d<=dim; d++){ const a=allocOf(d); if(a>maxAlloc) maxAlloc=a; }
+
+  // ── 日別行 ──
+  const cumBudByCamp = {}, cumActByCamp = {};
+  camps.forEach(c=>{ cumBudByCamp[c.name]=0; cumActByCamp[c.name]=0; });
+  let cumTotalBudget=0, cumTotalActual=0;
+  const diffCell = v => (v<0)
+    ? `<td class="bg-diff-neg">△${yen0(Math.abs(v))}</td>`
+    : `<td>${yen0(v)}</td>`;
+  const pctCell = v => (v==null || !isFinite(v))
+    ? `<td>—</td>`
+    : (v<0 ? `<td class="bg-diff-neg">${v.toFixed(1)}%</td>` : `<td>${(v>0?'+':'')+v.toFixed(1)}%</td>`);
+  let html='';
+  for (let d=1; d<=dim; d++){
+    const a = allocOf(d);
+    const hasCost = d<=lastDay;
+    let dayBudgetTotal=0, dayActualTotal=0, cells='';
+    camps.forEach(c=>{
+      const budget = Math.round(bgNum(c.budget)*a/100);
+      cumBudByCamp[c.name]+=budget; dayBudgetTotal+=budget;
+      const act = spendOf(c.name,d);
+      if(hasCost){ cumActByCamp[c.name]+=act; dayActualTotal+=act; }
+      const cb = cumBudByCamp[c.name], ca = cumActByCamp[c.name];
+      const diff = ca - cb, pct = cb>0 ? diff/cb*100 : null;
+      cells += `<td>${yen0(budget)}</td>`+
+               `<td>${hasCost?yen0(act):''}</td>`+
+               `<td>${yen0(cb)}</td>`+
+               `<td>${hasCost?yen0(ca):''}</td>`+
+               (hasCost?diffCell(diff):`<td></td>`)+
+               (hasCost?pctCell(pct):`<td></td>`);
+    });
+    cumTotalBudget += dayBudgetTotal;
+    if(hasCost) cumTotalActual += dayActualTotal;
+    const tdiff = cumTotalActual - cumTotalBudget, tpct = cumTotalBudget>0 ? tdiff/cumTotalBudget*100 : null;
+    cells += `<td class="bg-daytotal">${yen0(dayBudgetTotal)}</td>`+
+             `<td>${hasCost?yen0(dayActualTotal):''}</td>`+
+             `<td class="bg-daytotal">${yen0(cumTotalBudget)}</td>`+
+             `<td>${hasCost?yen0(cumTotalActual):''}</td>`+
+             (hasCost?diffCell(tdiff):`<td></td>`)+
+             (hasCost?pctCell(tpct):`<td></td>`);
+    const dlabel = `${yy}/${mm}/${String(d).padStart(2,'0')}`;
+    const alpha = maxAlloc>0 ? (a/maxAlloc*0.55).toFixed(3) : 0;
+    const allocVal = (s.alloc[d]!=null) ? s.alloc[d] : (100/dim).toFixed(2);
+    html += `<tr>
+      <td class="bg-day">${dlabel}</td>
+      <td style="background:rgba(76,175,120,${alpha})"><input class="bg-input" type="number" step="0.01" data-bgalloc="${d}" value="${allocVal}"> %</td>
+      ${cells}
+    </tr>`;
+  }
+  bodyEl.innerHTML = html;
+
+  // ── KPI（fraction model） ──
+  let allocCumLast=0; for(let d=1; d<=lastDay; d++) allocCumLast+=allocOf(d)/100;
+  const cumTarget = Math.round(totalBudget*allocCumLast);
+  const genCost = cumTotalActual;
+  const needRate = dim>0 ? lastDay/dim*100 : 0;
+  const achRate  = totalBudget>0 ? genCost/totalBudget*100 : 0;
+  const cumAch   = achRate - needRate;
+  const diff     = genCost - cumTarget;
+  const ok       = cumAch>=0;
+  const landing  = lastDay>0 ? Math.round(genCost/lastDay*dim) : 0;
+  const avgDaily = dim>0 ? Math.round(totalBudget/dim) : 0;
+  const kpis = [
+    ['今月の日数', dim+' 日'],
+    ['抽出最終日', lastDay?lastDay+' 日':'—'],
+    ['今月の残数', (dim-lastDay)+' 日'],
+    ['目標金額（合計）', totalBudget?yen0(totalBudget):'—'],
+    ['現状広告費', genCost?yen0(genCost):'—'],
+    ['達成率 / 必要', totalBudget? achRate.toFixed(1)+'% / '+needRate.toFixed(1)+'%':'—'],
+    ['累計差分', lastDay&&totalBudget? `<span style="color:${diff<0?'var(--danger,#d23)':'var(--success,#2a8)'}">${diff<0?'△'+yen0(Math.abs(diff)):yen0(diff)}</span>`:'—'],
+    ['進捗状況', lastDay&&totalBudget? `<span style="color:${ok?'var(--success,#2a8)':'var(--danger,#d23)'};font-weight:700">${ok?'順調':'進捗ピンチ'}</span>`:'—'],
+    ['着地見込み', landing?yen0(landing):'—'],
+    ['平均日予算', avgDaily?yen0(avgDaily):'—'],
+  ];
+  document.getElementById('bgKpiRow').innerHTML = kpis.map(([l,v])=>`<div class="bg-kpi"><div class="bg-kpi-label">${l}</div><div class="bg-kpi-val">${v}</div></div>`).join('');
+  bgSave();
+}
+
+function bgImportFromCsv(){
+  const ym = document.getElementById('bgMonth').value; if(!ym) return;
+  const s = bgGetSheet(bgMedia, ym);
+  const names = Object.keys(bgCsvByCampDay(ym));
+  if (!names.length){ alert('読込中のデータに ' + ym + ' のものが見つかりません。'); return; }
+  names.forEach(n=>{ if (!s.campaigns.some(c=>c.name===n)) s.campaigns.push({ name:n, budget:'' }); });
+  renderBudget();
+}
+
+// Excel（.xlsx）の予算シートを直接読み込む
+// 構造：行2=月予算 / 行3=キャンペーン名（コマアド行） / 行4=予算・広告費・累計 / 行5以降=日付・予算配分(小数)・…
+async function bgImportXlsx(file){
+  if (typeof XLSX === 'undefined'){ alert('Excel読込ライブラリの初期化中です。数秒後にもう一度お試しください。'); return; }
+  const msg = document.getElementById('bgPasteMsg');
+  try{
+    const buf = await file.arrayBuffer();
+    const processed = bgImportXlsxBuffer(buf);
+    if (!processed.length){ if(msg) msg.textContent='予算シートを認識できませんでした（「予算配分」見出しが見つかりません）'; return; }
+    bgPopulateMonths(processed[processed.length-1].ym);
+    renderBudget();
+    if (msg){
+      const t = processed.map(p=>`${p.ym}（${p.camps}キャンペーン・配分${p.days}日）`).join(' / ');
+      msg.textContent = `Excel読込完了：${t}`;
+      setTimeout(()=>{ msg.textContent=''; }, 6000);
+    }
+  }catch(err){
+    if(msg) msg.textContent='Excelの読み込みに失敗しました：'+err.message;
+    else alert('Excelの読み込みに失敗しました：'+err.message);
+  }
+}
+
+// ArrayBufferから予算シートを解析してbgStateへ反映。処理結果配列を返す。
+function bgImportXlsxBuffer(buf){
+  if (typeof XLSX === 'undefined') return [];
+  if(!bgState || !Object.keys(bgState).length) bgState = bgLoad();
+  const wb = XLSX.read(buf, { type:'array', cellDates:true });
+  const numOf = v => { if(v==null) return null; const n = parseFloat(String(v).replace(/[¥,\s円%]/g,'')); return isNaN(n)?null:n; };
+  const processed = [];
+  wb.SheetNames.forEach(sn=>{
+      const grid = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header:1, raw:true, blankrows:false, defval:null });
+      if (!grid.length) return;
+      const subIdx = grid.findIndex(r => Array.isArray(r) && r.some(c => c!=null && /予算配分/.test(String(c))));
+      if (subIdx < 0) return;
+      const subRow = grid[subIdx];
+      let dateCol = subRow.findIndex(c => c!=null && /日付|date/i.test(String(c))); if(dateCol<0) dateCol=0;
+      let allocCol = subRow.findIndex(c => c!=null && /予算配分/.test(String(c))); if(allocCol<0) allocCol=1;
+      // 旧形式（キャンペーンごとに 予算/広告費/累計 の3列）か、新形式（1キャンペーン=1列）か
+      const oldFormat = subRow.some(c => c!=null && String(c).trim()==='予算');
+      let nameRow, monthlyRow; const budCols=[];
+      if (oldFormat){
+        nameRow = grid[subIdx-1] || [];     // キャンペーン名（見出しの1つ上）
+        monthlyRow = grid[subIdx-2] || [];  // 月予算（2つ上）
+        subRow.forEach((c,i)=>{ if(c!=null && String(c).trim()==='予算') budCols.push(i); });
+      } else {
+        monthlyRow = subRow;                // 見出し行に月予算
+        nameRow = grid[subIdx+1] || [];     // 次行＝コマアド行（キャンペーン名）
+        const skip = Math.max(dateCol, allocCol);
+        nameRow.forEach((c,i)=>{ if(i>skip && c!=null && String(c).trim()!=='') budCols.push(i); });
+      }
+      const camps = [];
+      budCols.forEach(p=>{
+        const nm = (nameRow[p]!=null?String(nameRow[p]):'').trim();
+        const bud = numOf(monthlyRow[p]);
+        if(!nm || /^(コマアド|合計|総計|計|total)$/i.test(nm)) return;
+        camps.push({ name:nm, budget: bud==null?'':bud });
+      });
+      const allocRaw = {};
+      let ym = null;
+      for (let i=subIdx+1; i<grid.length; i++){
+        const row = grid[i]; if(!row) continue;
+        const dv = row[dateCol];
+        let y,m,day;
+        if (dv instanceof Date){ y=dv.getFullYear(); m=dv.getMonth()+1; day=dv.getDate(); }
+        else { const mm=String(dv==null?'':dv).match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!mm) continue; y=+mm[1]; m=+mm[2]; day=+mm[3]; }
+        if(!ym) ym = `${y}-${String(m).padStart(2,'0')}`;
+        const p = numOf(row[allocCol]);
+        if (p!=null) allocRaw[day] = p;
+      }
+      if(!ym){ const sm = String(sn).match(/(\d{4})(\d{2})/); if(sm) ym = sm[1]+'-'+sm[2]; }
+      if(!ym) return;
+      const vals = Object.values(allocRaw);
+      const maxV = vals.length?Math.max(...vals):0;
+      const alloc = {};
+      Object.entries(allocRaw).forEach(([d,v])=>{ alloc[d] = (maxV<=1.5 ? v*100 : v); });
+      const s = bgGetSheet(bgMedia, ym);
+      if (camps.length){ s.campaigns = []; camps.forEach(p=>s.campaigns.push(p)); }
+      if (Object.keys(alloc).length) s.alloc = alloc;
+      processed.push({ ym, camps: camps.length, days: Object.keys(alloc).length });
+    });
+    bgSave();
+    return processed;
+}
+
+// Excel（タブ区切り）貼り付け → 予算表に反映
+// ①「日別予算」シート全体（月予算＋予算配分） ②キャンペーン名＋月予算 の2形式に対応
+function bgApplyPaste(){
+  const ym = document.getElementById('bgMonth').value;   // 空でも全体貼り付けは日付から月を判定
+  const ta = document.getElementById('bgPaste');
+  const msg = document.getElementById('bgPasteMsg');
+  const text = (ta.value||'').replace(/\r/g,'');
+  if(!text.trim()){ if(msg)msg.textContent='貼り付け内容がありません'; return; }
+  const lines = text.split('\n').filter(l => l.trim()!=='');
+  const split = l => l.indexOf('\t')>=0 ? l.split('\t') : l.split(',');
+  const rows = lines.map(split);
+  const replace = document.getElementById('bgPasteReplace').checked;
+  const numOf = v => { const n = parseFloat(String(v==null?'':v).replace(/[¥,\s円%]/g,'')); return isNaN(n)?null:n; };
+
+  // ── ① 日別予算シート全体（「予算配分」を含む）──
+  const hdrIdx = rows.findIndex(r => r.some(c => /予算配分/.test(c)));
+  if (hdrIdx >= 0) {
+    // 対象月を日付列から自動判定（読み込んだ表の月で出力）
+    let targetYm = ym;
+    for (let i=hdrIdx+1; i<rows.length; i++){
+      const dm = String(rows[i][0]||'').match(/(\d{4})[\/\-.](\d{1,2})/);
+      if (dm){ targetYm = dm[1]+'-'+String(parseInt(dm[2],10)).padStart(2,'0'); break; }
+    }
+    const s = bgGetSheet(bgMedia, targetYm);
+    const monthlyRow = rows[hdrIdx];          // ¥230,000 等が col2,5,8,... に入る
+    const nameRow    = rows[hdrIdx+1] || [];  // ALOBABY 等
+    const cols = Math.max(monthlyRow.length, nameRow.length);
+    const camps = [];
+    for (let col=2; col<cols; col++){
+      const nm = (nameRow[col]||'').trim();
+      if (!nm || /^(コマアド|合計|総計|計|total|予算|広告費|累計)$/i.test(nm)) continue;
+      const bud = numOf(monthlyRow[col]);
+      camps.push({ name:nm, budget: bud==null?'':bud });
+    }
+    const alloc = {};
+    for (let i=hdrIdx+1; i<rows.length; i++){
+      const m = String(rows[i][0]||'').match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+      if(!m) continue;
+      const day = parseInt(m[3],10);
+      const p = numOf(rows[i][1]);
+      if (p!=null) alloc[day] = p;
+    }
+    if (camps.length){
+      if (replace) s.campaigns = [];
+      camps.forEach(p=>{ const ex=s.campaigns.find(c=>c.name===p.name); if(ex){ if(p.budget!=='') ex.budget=p.budget; } else s.campaigns.push(p); });
+    }
+    if (Object.keys(alloc).length) s.alloc = alloc;
+    bgSave();
+    ta.value='';
+    bgPopulateMonths(targetYm);   // 対象月を年月セレクタに反映して切替
+    renderBudget();
+    if(msg){ msg.textContent = `${targetYm} の日別予算を反映（${camps.length}キャンペーン・配分${Object.keys(alloc).length}日）`; setTimeout(()=>{ msg.textContent=''; }, 5000); }
+    return;
+  }
+
+  // ── ② キャンペーン名＋月予算 ──
+  if(!ym){ if(msg)msg.textContent='先に年月を選択してください（または日別予算シート全体を貼り付けてください）'; return; }
+  const s = bgGetSheet(bgMedia, ym);
+  let nameCol=0, budgetCol=1, start=0;
+  const head = rows[0].map(c=>c.trim());
+  const headerLooks = head.some(c=>/予算|キャンペーン|ブランド|金額|名/.test(c));
+  const firstHasNum = head.some(c=>numOf(c)!=null && /\d/.test(c));
+  if (headerLooks && !firstHasNum){
+    start=1;
+    const ni = head.findIndex(c=>/キャンペーン|ブランド|商品|名称|名/.test(c)); if(ni>=0) nameCol=ni;
+    let bi = head.findIndex(c=>/予算/.test(c) && !/差配|配分|進捗|消化/.test(c));
+    if(bi<0) bi = head.findIndex(c=>/金額|円|budget/i.test(c));
+    if(bi>=0) budgetCol=bi;
+  }
+  const parsed=[];
+  for(let i=start;i<rows.length;i++){
+    const cells = rows[i].map(c=>c.trim());
+    const name = (cells[nameCol]||'').trim();
+    if(!name || /^(合計|総計|小計|計|total)$/i.test(name)) continue;
+    const b = numOf(cells[budgetCol]);
+    parsed.push({ name, budget: b==null?'':b });
+  }
+  if(!parsed.length){ if(msg)msg.textContent='読み取れる行がありませんでした（列の選択をご確認ください）'; return; }
+  if (replace) s.campaigns = [];
+  parsed.forEach(p=>{ const ex = s.campaigns.find(c=>c.name===p.name); if(ex){ if(p.budget!=='') ex.budget=p.budget; } else s.campaigns.push(p); });
+  ta.value='';
+  renderBudget();
+  if(msg){ msg.textContent = `${parsed.length}件を反映しました`; setTimeout(()=>{ msg.textContent=''; }, 4000); }
+}
+
+// ═══════════════════════════════════════════════════
+//  予算対比サマリー（キャンペーン×指標 ピボット）
+// ═══════════════════════════════════════════════════
+let smyMedia = 'comad';
+function initSummary(){
+  const sel = document.getElementById('smyMonth');
+  if (!sel) return;
+  sel.innerHTML = availableMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+  sel.value = availableMonths[availableMonths.length-1] || '';
+  renderSummary();
+}
+function renderSummary(){
+  const sel = document.getElementById('smyMonth'); if (!sel) return;
+  const ym = sel.value;
+  const head = document.getElementById('smyHead');
+  const body = document.getElementById('smyBody');
+  document.querySelectorAll('#smyMediaToggle .bg-media-btn').forEach(b => b.classList.toggle('active', b.dataset.smymedia===smyMedia));
+  if (!ym){ head.innerHTML=''; body.innerHTML=''; return; }
+  const dim = document.getElementById('smyDim').value;
+  const rows = getRowsForMonth(ym);
+  if (!rows.length){ head.innerHTML=''; body.innerHTML = `<tr><td class="smy-empty">${ym} のデータがありません。</td></tr>`; return; }
+
+  let lastDay = 0;
+  rows.forEach(r => { const d = parseInt(String(r.date).slice(8,10),10); if (d>lastDay) lastDay=d; });
+  const dimDays = daysInMonth(ym);
+  const dateLabel = `${ym.replace('-','/')}/${String(lastDay).padStart(2,'0')}`;
+
+  const key = dim==='grp' ? 'grp' : 'camp';
+  const m = new Map();
+  rows.forEach(r => {
+    const k = r[key] || '(不明)';
+    if (!m.has(k)) m.set(k,{name:k, cost:0, click:0, cv:0, convVal:0});
+    const o = m.get(k); o.cost+=r.cost; o.click+=r.click; o.cv+=r.cv; o.convVal+=r.convVal;
+  });
+  let cols = Array.from(m.values()).sort((a,b)=>b.cost-a.cost);
+
+  const sheet = bgGetSheet(smyMedia, ym);
+  const budgetByName = {};
+  sheet.campaigns.forEach(c => { budgetByName[c.name] = bgNum(c.budget); });
+  let allocCum = 0;
+  for (let d=1; d<=lastDay; d++){ const a = (sheet.alloc[d]!=null)?Number(sheet.alloc[d]):(100/dimDays); allocCum += a/100; }
+  const colBudget = name => { const b = budgetByName[name]||0; return Math.round(b*allocCum); };
+
+  const T = cols.reduce((a,c)=>{a.cost+=c.cost;a.click+=c.click;a.cv+=c.cv;a.convVal+=c.convVal;a.budget+=colBudget(c.name);return a;},{cost:0,click:0,cv:0,convVal:0,budget:0});
+
+  const y0 = v => '¥'+Math.round(v||0).toLocaleString('ja-JP');
+  const jpn = v => Math.round(v||0).toLocaleString('ja-JP');
+
+  head.innerHTML = `<tr>
+    <th class="smy-date">${dateLabel}</th>
+    ${cols.map(c=>`<th>${esc(c.name)}</th>`).join('')}
+    <th class="smy-total">合計</th>
+  </tr>`;
+
+  const cell = (val, isTotal) => `<td class="${isTotal?'smy-total':''}">${val}</td>`;
+  const pct = (n,d=1)=> (n==null||!isFinite(n)) ? '—' : n.toFixed(d)+'%';
+  function row(label, fn, opt){
+    opt = opt||{};
+    const cls = (opt.bold?'smy-bold ':'') + (opt.sep?'smy-sep':'');
+    let h = `<tr class="${cls.trim()}"><th>${label}</th>`;
+    cols.forEach(c => { h += cell(fn(c, colBudget(c.name)), false); });
+    h += cell(fn(T, T.budget, true), true);
+    h += '</tr>';
+    return h;
+  }
+  let html = '';
+  html += row('累計予算',      (c,b)=> y0(b));
+  html += row('累計利用金額',   (c)=> y0(c.cost), {sep:true});
+  html += row('累計予算進捗',   (c,b)=> b>0 ? pct(c.cost/b*100,1) : '—', {bold:true});
+  html += row('累計クリック数', (c)=> jpn(c.click));
+  html += row('CPC',           (c)=> c.click>0 ? '¥'+Math.round(c.cost/c.click).toLocaleString('ja-JP') : '—');
+  html += row('累計注文者数',   (c)=> jpn(c.cv));
+  html += row('累計CVR',       (c)=> c.click>0 ? pct(c.cv/c.click*100,2) : '—');
+  html += row('累計売上',      (c)=> y0(c.convVal), {sep:true});
+  html += row('累計費用対効果', (c)=> c.cost>0 ? pct(c.convVal/c.cost*100,2) : '—', {bold:true});
+  body.innerHTML = html;
+}
+
+function setupDashboardAfterLoad(sourceName) {
+  document.getElementById('uploadZone').classList.add('hidden');
+  document.getElementById('uploadBar').classList.remove('hidden');
+  document.getElementById('uploadFileName').textContent = sourceName;
+  document.getElementById('uploadFileInfo').textContent =
+    `${allRows.length.toLocaleString('ja-JP')} 件 ／ ${availableMonths.length} ヶ月分 ・自動保存（ブラウザ内）`;
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('headerSub').textContent = sourceName;
+  document.getElementById('headerInfo').textContent =
+    availableMonths.length > 1
+      ? `${availableMonths[0]} 〜 ${availableMonths[availableMonths.length-1]}`
+      : (availableMonths[0] || '');
+
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = availableMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+  selectedMonth = availableMonths[availableMonths.length-1];
+  sel.value = selectedMonth;
+
+  const allDates = [...new Set(allRows.map(r => r.date))].sort();
+  if (allDates.length) {
+    ['dateFrom','dateTo'].forEach(id => {
+      document.getElementById(id).min = allDates[0];
+      document.getElementById(id).max = allDates[allDates.length-1];
+    });
+    document.getElementById('dateFrom').value = allDates[0];
+    document.getElementById('dateTo').value   = allDates[allDates.length-1];
+  }
+
+  expandedCamps.clear(); expandedGrps.clear();
+  initWeeklyReport();
+  initBudget();
+  initSummary();
+  renderAll();
+}
+
+function showLoading(msg) { document.getElementById('loadingMsg').textContent=msg||'処理中...'; document.getElementById('loading').classList.remove('hidden'); }
+function hideLoading()    { document.getElementById('loading').classList.add('hidden'); }
+
+// 予算管理 イベント結線
+document.addEventListener('DOMContentLoaded', () => {
+  const mt = document.getElementById('bgMediaToggle');
+  if (mt) mt.addEventListener('click', e => { const b=e.target.closest('.bg-media-btn'); if(!b)return; bgMedia=b.dataset.bgmedia; renderBudget(); });
+  const sel = document.getElementById('bgMonth');
+  if (sel) sel.addEventListener('change', renderBudget);
+  const iEl = document.getElementById('bgIncentive');
+  if (iEl) iEl.addEventListener('input', () => { const s=bgCur(); if(!s)return; s.incentive = iEl.value===''?0:Number(iEl.value); bgSave(); });
+
+  // キャンペーン別予算テーブル（名称・予算・削除）
+  const cb = document.getElementById('bgCampBody');
+  if (cb) {
+    cb.addEventListener('input', e => {
+      const s=bgCur(); if(!s)return;
+      const nm = e.target.closest('[data-bgcamp]');
+      const bd = e.target.closest('[data-bgbudget]');
+      if (nm) {
+        const i=+nm.dataset.bgcamp, oldName=s.campaigns[i].name, newName=nm.value;
+        if (oldName!==newName && s.spend[oldName]!=null){ s.spend[newName]=s.spend[oldName]; delete s.spend[oldName]; }
+        s.campaigns[i].name=newName; bgSave();   // 名称は逐次保存（再描画はblur時）
+      } else if (bd) {
+        const i=+bd.dataset.bgbudget; s.campaigns[i].budget = bd.value===''?'':Number(bd.value); renderBudget();
+      }
+    });
+    cb.addEventListener('change', e => { if(e.target.closest('[data-bgcamp]')) renderBudget(); });
+    cb.addEventListener('click', e => {
+      const del=e.target.closest('[data-bgdel]'); if(!del)return;
+      const s=bgCur(); if(!s)return; const i=+del.dataset.bgdel;
+      const nm=s.campaigns[i].name; delete s.spend[nm]; s.campaigns.splice(i,1); renderBudget();
+    });
+  }
+  const add = document.getElementById('bgAddCamp');
+  if (add) add.addEventListener('click', () => { const s=bgCur(); if(!s)return; s.campaigns.push({name:'',budget:''}); renderBudget(); });
+
+  // 日別マトリクス（予算差配のみ編集可。広告費は読込データから自動抽出）
+  const body = document.getElementById('bgBody');
+  if (body) body.addEventListener('change', e => {
+    const s=bgCur(); if(!s)return;
+    const a = e.target.closest('[data-bgalloc]');
+    if (a) { const d=+a.dataset.bgalloc; s.alloc[d] = (a.value===''?100:Number(a.value)); renderBudget(); }
+  });
+  const rb = document.getElementById('bgResetAlloc');
+  if (rb) rb.addEventListener('click', () => { const s=bgCur(); if(!s)return; s.alloc={}; renderBudget(); });
+  const ic = document.getElementById('bgImportCsv');
+  if (ic) ic.addEventListener('click', bgImportFromCsv);
+  const pab = document.getElementById('bgPasteApply');
+  if (pab) pab.addEventListener('click', bgApplyPaste);
+  const xb = document.getElementById('bgImportXlsxBtn');
+  if (xb) xb.addEventListener('click', () => document.getElementById('bgXlsxInput').click());
+  const xi = document.getElementById('bgXlsxInput');
+  if (xi) xi.addEventListener('change', e => { if(e.target.files[0]) bgImportXlsx(e.target.files[0]); e.target.value=''; });
+
+  // 予算対比サマリー
+  const smt = document.getElementById('smyMediaToggle');
+  if (smt) smt.addEventListener('click', e => { const b=e.target.closest('.bg-media-btn'); if(!b)return; smyMedia=b.dataset.smymedia; renderSummary(); });
+  const sm = document.getElementById('smyMonth');
+  if (sm) sm.addEventListener('change', renderSummary);
+  const sd = document.getElementById('smyDim');
+  if (sd) sd.addEventListener('change', renderSummary);
+});
+</script>
+  <!-- ══ PROXY MANUAL MODAL ══ -->
+  <div class="manual-overlay hidden" id="manualOverlay">
+    <div class="manual-panel">
+      <div class="manual-header">
+        <div>
+          <div class="manual-header-title">📘 プロキシサーバー セットアップマニュアル</div>
+          <div class="manual-header-sub">コマースアドマネージャー API × Cloud Run 連携の完全手順</div>
+        </div>
+        <button class="manual-close" onclick="document.getElementById('manualOverlay').classList.add('hidden')">✕</button>
+      </div>
+      <div class="manual-body">
+
+        <!-- 目次 -->
+        <div class="manual-toc">
+          <div class="manual-toc-title">📋 目次</div>
+          <a href="#m1">① 全体の流れ</a>
+          <a href="#m2">② 前提条件・必要なもの</a>
+          <a href="#m3">③ Google Cloud SDK のインストール</a>
+          <a href="#m4">④ プロキシサーバーのデプロイ（Cloud Run）</a>
+          <a href="#m5">⑤ ダッシュボードへの接続設定</a>
+          <a href="#m6">⑥ コマースアドマネージャー APIの認証情報取得</a>
+          <a href="#m7">⑦ エラーと対処法</a>
+        </div>
+
+        <!-- ① 全体の流れ -->
+        <div class="manual-section" id="m1">
+          <div class="manual-section-title"><span class="num">1</span>全体の流れ</div>
+          <div class="manual-p">このシステムは3つのパーツで構成されています。</div>
+          <div class="manual-code"><span class="cm">┌─────────────────────────────────────────────┐</span>
+<span class="cv">  ダッシュボード（このHTMLファイル）</span>
+<span class="cm">  ブラウザ上で動作。認証情報を入力してデータ取得ボタンを押す</span>
+<span class="cm">           │  POST /yahoo-ads/report</span>
+<span class="cm">           ▼</span>
+<span class="ck">  プロキシサーバー（Cloud Run）</span>
+<span class="cm">  Googleのクラウドで動作。ブラウザの代わりにYahoo!APIを呼び出す</span>
+<span class="cm">           │  コマースアドマネージャー API リクエスト</span>
+<span class="cm">           ▼</span>
+<span class="cs">  コマースアドマネージャー API</span>
+<span class="cm">  レポートデータを返す → ダッシュボードに自動反映</span>
+<span class="cm">└─────────────────────────────────────────────┘</span></div>
+        </div>
+
+        <!-- ② 前提条件 -->
+        <div class="manual-section" id="m2">
+          <div class="manual-section-title"><span class="num">2</span>前提条件・必要なもの</div>
+          <table class="manual-table">
+            <tr><th>必要なもの</th><th>状態の確認方法</th></tr>
+            <tr><td>Google Cloud アカウント</td><td>console.cloud.google.com にログインできる</td></tr>
+            <tr><td>Google Cloud プロジェクト</td><td>プロジェクトIDを確認済み（例: composed-augury-xxxxxx）</td></tr>
+            <tr><td>Google Cloud SDK（gcloud）</td><td>ターミナルで <code>gcloud version</code> が動く</td></tr>
+            <tr><td>yahoo-ads-cloudrun.zip</td><td>Claudeからダウンロード済み</td></tr>
+            <tr><td>コマースアドマネージャー APIアカウント</td><td>申請後に発行（後でOK）</td></tr>
+          </table>
+          <div class="manual-tip warn">⚠️ Cloud Run デプロイには Google Cloud の課金が必要です。ただし低負荷な利用では月額ほぼ無料（無料枠内）に収まります。</div>
+        </div>
+
+        <!-- ③ gcloud インストール -->
+        <div class="manual-section" id="m3">
+          <div class="manual-section-title"><span class="num">3</span>Google Cloud SDK のインストール</div>
+          <div class="manual-p">macOS (Homebrew) の場合：</div>
+          <div class="manual-code"><span class="cm"># Homebrewでインストール</span>
+<span class="cv">brew install --cask google-cloud-sdk</span>
+
+<span class="cm"># ターミナルを再起動後、確認</span>
+<span class="cv">gcloud version</span>
+<span class="cm"># → Google Cloud SDK 4xx.x.x と表示されればOK</span></div>
+          <div class="manual-p">インストール後、Googleアカウントでログインします：</div>
+          <div class="manual-code"><span class="cm"># ブラウザが開いてGoogleログイン画面が表示される</span>
+<span class="cv">gcloud auth login</span>
+
+<span class="cm"># プロジェクトIDを設定</span>
+<span class="cv">gcloud config set project YOUR_PROJECT_ID</span>
+
+<span class="cm"># 確認</span>
+<span class="cv">gcloud config list</span></div>
+        </div>
+
+        <!-- ④ Cloud Run デプロイ -->
+        <div class="manual-section" id="m4">
+          <div class="manual-section-title"><span class="num">4</span>プロキシサーバーのデプロイ（Cloud Run）</div>
+          <div class="manual-p">ダウンロードしたZIPを展開して、デプロイスクリプトを実行するだけです。</div>
+          <div class="manual-code"><span class="cm"># ① ZIPを展開（ダウンロードフォルダに保存した場合）</span>
+<span class="cv">cd ~/Downloads</span>
+<span class="cv">unzip yahoo-ads-cloudrun.zip</span>
+<span class="cv">cd yahoo-ads-cloudrun</span>
+
+<span class="cm"># ② ワンコマンドデプロイ（初回は3〜5分かかります）</span>
+<span class="cv">bash deploy.sh</span></div>
+          <div class="manual-p">デプロイが完了すると以下のようなURLが表示されます：</div>
+          <div class="manual-code"><span class="cv">✅ デプロイ完了</span>
+<span class="cs">🔗 サービスURL: https://yahoo-ads-proxy-xxxx-an.a.run.app</span>
+<span class="cv">✅ 正常に起動しています (HTTP 200)</span>
+
+<span class="cm">================================================</span>
+<span class="cm">  ダッシュボードのプロキシURLに以下を設定:</span>
+<span class="cs">  https://yahoo-ads-proxy-xxxx-an.a.run.app</span>
+<span class="cm">================================================</span></div>
+          <div class="manual-tip success">✅ このURLをコピーして次のステップで使います。</div>
+          <div class="manual-p">2回目以降の更新も同じコマンドで自動的に上書きデプロイされます。</div>
+        </div>
+
+        <!-- ⑤ ダッシュボード接続 -->
+        <div class="manual-section" id="m5">
+          <div class="manual-section-title"><span class="num">5</span>ダッシュボードへの接続設定</div>
+          <div class="manual-p">デプロイ完了後、このダッシュボードの「🔌 コマースアドマネージャー API 自動連携」パネルに情報を入力します。</div>
+          <table class="manual-table">
+            <tr><th>入力項目</th><th>入力する値</th></tr>
+            <tr><td>プロキシサーバーURL</td><td>デプロイで表示された <code>https://yahoo-ads-proxy-xxxx-an.a.run.app</code></td></tr>
+            <tr><td>クライアントID</td><td>コマースアドマネージャー APIポータルで発行されたID</td></tr>
+            <tr><td>クライアントシークレット</td><td>同ポータルで発行されたシークレット</td></tr>
+            <tr><td>アクセストークン</td><td>OAuth認証後に発行されるトークン</td></tr>
+            <tr><td>広告アカウントID</td><td>コマースアドマネージャー管理画面の数字のID</td></tr>
+            <tr><td>取得開始日〜終了日</td><td>レポートを取得したい期間</td></tr>
+          </table>
+          <div class="manual-tip">💡 「設定を保存」ボタンを押すと、次回ブラウザを開いたときも入力内容が保持されます（シークレット・トークンを除く）。</div>
+          <div class="manual-p">入力後、「🔌 データを取得」ボタンが青くなったらクリックするとデータが自動取得されます。</div>
+        </div>
+
+        <!-- ⑥ 認証情報取得 -->
+        <div class="manual-section" id="m6">
+          <div class="manual-section-title"><span class="num">6</span>コマースアドマネージャー APIの認証情報取得</div>
+          <div class="manual-p"><strong>Step 1：</strong>コマースアドマネージャー APIポータルでデベロッパー登録</div>
+          <div class="manual-code"><span class="cs">https://ads-developers.yahoo.co.jp/ja/ads-api/startup-guide/apply-api-use.html</span></div>
+          <div class="manual-p"><strong>Step 2：</strong>審査通過後、クライアントID・シークレットが発行される（数日〜1週間）</div>
+          <div class="manual-p"><strong>Step 3：</strong>OAuth認証フローでアクセストークンを取得</div>
+          <div class="manual-code"><span class="cm"># 認可URLにブラウザでアクセス（CLIENT_IDを自分のIDに変更）</span>
+<span class="cs">https://biz-oauth.yahoo.co.jp/oauth/v1/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https://localhost&scope=yahooads</span>
+
+<span class="cm"># ログイン→承認後にリダイレクトURLのcodeパラメータを取得</span>
+<span class="cm"># 例: https://localhost?code=XXXXXXXXXX</span>
+
+<span class="cm"># プロキシの /token エンドポイントでトークン交換</span>
+<span class="cv">curl -X POST https://yahoo-ads-proxy-xxxx-an.a.run.app/token \</span>
+<span class="cv">  -H "Content-Type: application/json" \</span>
+<span class="cv">  -d '{</span>
+<span class="cv">    "clientId": "あなたのクライアントID",</span>
+<span class="cv">    "clientSecret": "あなたのシークレット",</span>
+<span class="cv">    "code": "取得したcode",</span>
+<span class="cv">    "redirectUri": "https://localhost"</span>
+<span class="cv">  }'</span>
+<span class="cm"># → access_token が返ってくるのでダッシュボードに入力</span></div>
+        </div>
+
+        <!-- ⑦ エラーと対処 -->
+        <div class="manual-section" id="m7">
+          <div class="manual-section-title"><span class="num">7</span>エラーと対処法</div>
+          <table class="manual-table">
+            <tr><th>エラー</th><th>原因</th><th>対処</th></tr>
+            <tr><td>gcloud: command not found</td><td>SDK未インストール</td><td>③の手順でインストール後ターミナル再起動</td></tr>
+            <tr><td>One or more users... organization policy</td><td>組織ポリシーでCloud Functions禁止</td><td>Cloud Runを使う（このマニュアルの手順）</td></tr>
+            <tr><td>HTTP 401 UNAUTHORIZED</td><td>アクセストークン切れ</td><td>/refresh エンドポイントでトークン更新</td></tr>
+            <tr><td>HTTP 504 TIMEOUT</td><td>レポート生成が90秒超</td><td>取得期間を短くして再試行</td></tr>
+            <tr><td>データが0件</td><td>期間内にデータなし</td><td>広告アカウントIDと取得期間を確認</td></tr>
+          </table>
+          <div class="manual-tip">💡 トラブル時はターミナルで以下を実行するとCloud Runのログが確認できます：<br><code style="font-family:'IBM Plex Mono',monospace">gcloud run services logs read yahoo-ads-proxy --region=asia-northeast1 --limit=50</code></div>
+        </div>
+
+      </div>
+      <div class="manual-footer">
+        <button class="manual-footer-btn" onclick="document.getElementById('manualOverlay').classList.add('hidden')">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
